@@ -28,6 +28,9 @@ export interface Household {
   show_balancer_widget: boolean;
   pinned_task_ids?: string[];
   pinned_counter_ids?: string[];
+  // Cat Counselor Config
+  cat_counselor_enabled?: boolean;
+  cat_counselor_name?: string;
 }
 
 export interface Task {

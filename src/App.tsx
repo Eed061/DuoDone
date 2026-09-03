@@ -14,6 +14,8 @@ import { DashboardConfigurator } from './components/settings/DashboardConfigurat
 import { HouseholdShareModal } from './components/settings/HouseholdShareModal';
 import { TaskManager } from './components/settings/TaskManager';
 import { RouletteManager } from './components/settings/RouletteManager';
+import { CatSettings } from './components/settings/CatSettings';
+import { CatCounselor } from './components/common/CatCounselor';
 import { Task, Counter } from './types';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -194,7 +196,7 @@ export const MainApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans relative">
       <Header />
 
       <main className="flex-1 max-w-md mx-auto w-full p-4">
@@ -203,6 +205,7 @@ export const MainApp: React.FC = () => {
         {activeTab === 'roulette' && <RouletteWheel />}
         {activeTab === 'settings' && (
           <div className="space-y-4 pb-20 animate-fadeIn">
+            <CatSettings />
             <DashboardConfigurator />
             <HouseholdShareModal />
             <TaskManager />
@@ -210,6 +213,9 @@ export const MainApp: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Global Cat Counselor Popup */}
+      <CatCounselor />
 
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
     </div>
