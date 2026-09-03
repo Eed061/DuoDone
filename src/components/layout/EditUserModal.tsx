@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, Check, Edit3, User as UserIcon } from 'lucide-react';
+import { X, Check, Edit3, Camera, User as UserIcon, Loader2 } from 'lucide-react';
+import { compressImageFile } from '../../services/imageCompression';
 
 interface EditUserModalProps {
   onClose: () => void;
@@ -13,22 +14,50 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
   const user2 = users[1] || { id: 'u2', first_name: 'Партнер 2' };
 
   const [name1, setName1] = useState(user1.first_name);
+  const [avatar1, setAvatar1] = useState(user1.avatar_url || '');
+
   const [name2, setName2] = useState(user2.first_name);
+  const [avatar2, setAvatar2] = useState(user2.avatar_url || '');
+
+  const [uploading1, setUploading1] = useState(false);
+  const [uploading2, setUploading2] = useState(false);
+
+  const fileInputRef1 = useRef<HTMLInputElement>(null);
+  const fileInputRef2 = useRef<HTMLInputElement>(null);
+
+  const handleAvatarChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setAvatar: (url: string) => void,
+    setLoading: (l: boolean) => void
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setLoading(true);
+      const compressedWebP = await compressImageFile(file, 400, 400, 0.85);
+      setAvatar(compressedWebP);
+    } catch (err) {
+      console.error('Failed to compress avatar:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (name1.trim()) {
-      updateUser(user1.id, { first_name: name1.trim() });
+      updateUser(user1.id, { first_name: name1.trim(), avatar_url: avatar1 });
     }
     if (name2.trim()) {
-      updateUser(user2.id, { first_name: name2.trim() });
+      updateUser(user2.id, { first_name: name2.trim(), avatar_url: avatar2 });
     }
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-sm p-5 shadow-2xl relative">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-sm p-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
@@ -41,40 +70,98 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
             <Edit3 className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-extrabold text-white text-base">Імена Партнерів</h3>
-            <p className="text-xs text-slate-400">Вкажіть ваші власні імена чи милі прізвиська</p>
+            <h3 className="font-extrabold text-white text-base">Імена та Фото Партнерів</h3>
+            <p className="text-xs text-slate-400">Встановіть власні імена та фото аватарок</p>
           </div>
         </div>
 
         <form onSubmit={handleSave} className="space-y-4">
           {/* Partner 1 */}
-          <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/50 space-y-1.5">
-            <label className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1">
-              <span>👨</span> Партнер 1
+          <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50 space-y-2.5">
+            <label className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider flex items-center justify-between">
+              <span className="flex items-center gap-1">👨 Партнер 1</span>
+              <span className="text-[10px] text-slate-400 font-normal">Фото та ім'я</span>
             </label>
-            <input
-              type="text"
-              value={name1}
-              onChange={(e) => setName1(e.target.value)}
-              placeholder="Наприклад: Олександр або Він"
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
-              required
-            />
+
+            <div className="flex items-center space-x-3">
+              <div className="relative group">
+                <img
+                  src={avatar1 || 'https://api.dicebear.com/7.x/bottts/svg?seed=Dmitry'}
+                  alt={name1}
+                  className="w-12 h-12 rounded-full object-cover border-2 border-indigo-500/40 bg-slate-900"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef1.current?.click()}
+                  className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-white opacity-90 group-hover:opacity-100 transition-opacity"
+                  title="Змінити фото"
+                >
+                  {uploading1 ? <Loader2 className="w-4 h-4 animate-spin text-indigo-400" /> : <Camera className="w-4 h-4" />}
+                </button>
+              </div>
+
+              <div className="flex-1">
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef1}
+                  onChange={(e) => handleAvatarChange(e, setAvatar1, setUploading1)}
+                  className="hidden"
+                />
+                <input
+                  type="text"
+                  value={name1}
+                  onChange={(e) => setName1(e.target.value)}
+                  placeholder="Ім'я партнера 1"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  required
+                />
+              </div>
+            </div>
           </div>
 
           {/* Partner 2 */}
-          <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/50 space-y-1.5">
-            <label className="text-[11px] font-bold text-pink-400 uppercase tracking-wider flex items-center gap-1">
-              <span>👩</span> Партнер 2
+          <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50 space-y-2.5">
+            <label className="text-[11px] font-bold text-pink-400 uppercase tracking-wider flex items-center justify-between">
+              <span className="flex items-center gap-1">👩 Партнер 2</span>
+              <span className="text-[10px] text-slate-400 font-normal">Фото та ім'я</span>
             </label>
-            <input
-              type="text"
-              value={name2}
-              onChange={(e) => setName2(e.target.value)}
-              placeholder="Наприклад: Катерина або Вона"
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
-              required
-            />
+
+            <div className="flex items-center space-x-3">
+              <div className="relative group">
+                <img
+                  src={avatar2 || 'https://api.dicebear.com/7.x/bottts/svg?seed=Elena'}
+                  alt={name2}
+                  className="w-12 h-12 rounded-full object-cover border-2 border-pink-500/40 bg-slate-900"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef2.current?.click()}
+                  className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-white opacity-90 group-hover:opacity-100 transition-opacity"
+                  title="Змінити фото"
+                >
+                  {uploading2 ? <Loader2 className="w-4 h-4 animate-spin text-pink-400" /> : <Camera className="w-4 h-4" />}
+                </button>
+              </div>
+
+              <div className="flex-1">
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef2}
+                  onChange={(e) => handleAvatarChange(e, setAvatar2, setUploading2)}
+                  className="hidden"
+                />
+                <input
+                  type="text"
+                  value={name2}
+                  onChange={(e) => setName2(e.target.value)}
+                  placeholder="Ім'я партнера 2"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  required
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex space-x-2 pt-2">
@@ -87,10 +174,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold text-xs flex items-center justify-center space-x-1 shadow-lg shadow-indigo-500/25"
+              disabled={uploading1 || uploading2}
+              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold text-xs flex items-center justify-center space-x-1 shadow-lg shadow-indigo-500/25 disabled:opacity-50"
             >
               <Check className="w-4 h-4" />
-              <span>Зберегти імена</span>
+              <span>Зберегти зміни</span>
             </button>
           </div>
         </form>

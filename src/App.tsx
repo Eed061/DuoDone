@@ -124,25 +124,21 @@ const DashboardContent: React.FC = () => {
         )}
       </section>
 
-      {/* 3. Counters Section */}
-      <section className="space-y-2.5 pt-2">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center space-x-2">
-            <span className="text-base">🔢</span>
-            <h3 className="font-extrabold text-white text-sm tracking-tight">
-              Блок «Лічильники» (Плитки дій)
-            </h3>
+      {/* 3. Counters Section (Only rendered if there are counters) */}
+      {displayedCounters.length > 0 && (
+        <section className="space-y-2.5 pt-2">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center space-x-2">
+              <span className="text-base">🔢</span>
+              <h3 className="font-extrabold text-white text-sm tracking-tight">
+                Блок «Лічильники» (Плитки дій)
+              </h3>
+            </div>
+            <span className="text-[10px] text-slate-400 font-medium">
+              {displayedCounters.length} на екрані
+            </span>
           </div>
-          <span className="text-[10px] text-slate-400 font-medium">
-            {displayedCounters.length} на екрані
-          </span>
-        </div>
 
-        {displayedCounters.length === 0 ? (
-          <div className="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-6 text-center text-slate-400 text-xs">
-            Немає доданих лічильників.
-          </div>
-        ) : (
           <div className="grid grid-cols-2 gap-3">
             {displayedCounters.map((counter) => (
               <CounterTile
@@ -153,23 +149,23 @@ const DashboardContent: React.FC = () => {
               />
             ))}
           </div>
-        )}
 
-        {/* Hidden counters expand button */}
-        {hiddenCounters.length > 0 && (
-          <button
-            onClick={() => setShowAllCounters(!showAllCounters)}
-            className="w-full py-2 bg-slate-800/60 hover:bg-slate-800 text-slate-300 text-xs font-bold rounded-xl border border-slate-700/60 flex items-center justify-center space-x-1 transition-colors"
-          >
-            <span>
-              {showAllCounters
-                ? 'Сховати додаткові лічильники'
-                : `Більше лічильників (+${hiddenCounters.length})`}
-            </span>
-            {showAllCounters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-        )}
-      </section>
+          {/* Hidden counters expand button */}
+          {hiddenCounters.length > 0 && (
+            <button
+              onClick={() => setShowAllCounters(!showAllCounters)}
+              className="w-full py-2 bg-slate-800/60 hover:bg-slate-800 text-slate-300 text-xs font-bold rounded-xl border border-slate-700/60 flex items-center justify-center space-x-1 transition-colors"
+            >
+              <span>
+                {showAllCounters
+                  ? 'Сховати додаткові лічильники'
+                  : `Більше лічильників (+${hiddenCounters.length})`}
+              </span>
+              {showAllCounters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+          )}
+        </section>
+      )}
 
       {/* Camera Capture Modal */}
       {activeCameraAction && (

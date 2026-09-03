@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Share2, Copy, Check, QrCode, Users, Edit3 } from 'lucide-react';
+import { Share2, Copy, Check, QrCode, Users, Edit3, RotateCcw, RefreshCw, AlertTriangle, ArrowRight } from 'lucide-react';
 import { triggerSuccessHaptic } from '../../services/telegram';
 import { EditUserModal } from '../layout/EditUserModal';
 
 export const HouseholdShareModal: React.FC = () => {
-  const { household, updateHousehold, users } = useApp();
+  const { household, updateHousehold, users, resetCycle, factoryReset } = useApp();
   const [copied, setCopied] = useState(false);
   const [nameInput, setNameInput] = useState(household.name || 'Наш дім');
   const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [showFactoryConfirm, setShowFactoryConfirm] = useState(false);
+  const [showResetCycleConfirm, setShowResetCycleConfirm] = useState(false);
 
   const inviteLink = `https://t.me/DuoDone_bot?start=join_${household.invite_code || 'DUO7789'}`;
 
@@ -26,6 +28,16 @@ export const HouseholdShareModal: React.FC = () => {
     }
   };
 
+  const handleConfirmResetCycle = () => {
+    resetCycle();
+    setShowResetCycleConfirm(false);
+  };
+
+  const handleConfirmFactoryReset = () => {
+    factoryReset();
+    setShowFactoryConfirm(false);
+  };
+
   return (
     <>
       <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-4 shadow-lg space-y-4">
@@ -33,16 +45,16 @@ export const HouseholdShareModal: React.FC = () => {
           <Users className="w-5 h-5 text-indigo-400" />
           <div>
             <h3 className="font-bold text-white text-base">Налаштування Простору та Партнерів</h3>
-            <p className="text-xs text-slate-400">Імена партнерів, назва дому та лінк підключення</p>
+            <p className="text-xs text-slate-400">Імена партнерів, фото, назва дому та скидання</p>
           </div>
         </div>
 
         {/* Rename Partners Section */}
         <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 flex items-center justify-between">
           <div>
-            <h4 className="text-xs font-bold text-slate-200">Імена партнерів у застосунку</h4>
+            <h4 className="text-xs font-bold text-slate-200">Партнери та їх фото</h4>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Зараз: <span className="font-semibold text-indigo-300">{users[0]?.first_name || 'Він'}</span> та{' '}
+              <span className="font-semibold text-indigo-300">{users[0]?.first_name || 'Він'}</span> та{' '}
               <span className="font-semibold text-pink-300">{users[1]?.first_name || 'Вона'}</span>
             </p>
           </div>
@@ -51,7 +63,7 @@ export const HouseholdShareModal: React.FC = () => {
             className="bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-indigo-500/30 flex items-center space-x-1 transition-all"
           >
             <Edit3 className="w-3.5 h-3.5" />
-            <span>Змінити імена</span>
+            <span>Змінити імена/фото</span>
           </button>
         </div>
 
@@ -74,6 +86,83 @@ export const HouseholdShareModal: React.FC = () => {
           </div>
         </form>
 
+        {/* Cycle & Reset Control Buttons */}
+        <div className="pt-2 space-y-2 border-t border-slate-700/60">
+          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            Керування циклами та Даними
+          </h4>
+
+          <div className="grid grid-cols-1 gap-2">
+            {/* Reset Cycle Button */}
+            {!showResetCycleConfirm ? (
+              <button
+                onClick={() => setShowResetCycleConfirm(true)}
+                className="w-full py-2.5 px-3 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/60 border border-indigo-500/30 text-indigo-300 text-xs font-bold flex items-center justify-between transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <RotateCcw className="w-4 h-4 text-indigo-400" />
+                  <span>Почати новий місячний цикл</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <div className="bg-indigo-950/80 border border-indigo-500/50 rounded-xl p-3 text-center space-y-2 animate-fadeIn">
+                <p className="text-xs text-indigo-200 font-semibold">
+                  Обнулити бали XP та розпочати новий місяць?
+                </p>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setShowResetCycleConfirm(false)}
+                    className="flex-1 py-1.5 bg-slate-800 text-slate-300 text-xs font-bold rounded-lg"
+                  >
+                    Скасувати
+                  </button>
+                  <button
+                    onClick={handleConfirmResetCycle}
+                    className="flex-1 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg"
+                  >
+                    Так, почати цикл
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Factory Reset Button */}
+            {!showFactoryConfirm ? (
+              <button
+                onClick={() => setShowFactoryConfirm(true)}
+                className="w-full py-2.5 px-3 rounded-xl bg-rose-950/40 hover:bg-rose-900/50 border border-rose-500/30 text-rose-300 text-xs font-bold flex items-center justify-between transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <RefreshCw className="w-4 h-4 text-rose-400" />
+                  <span>Почати заново (Заводські налаштування)</span>
+                </div>
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+              </button>
+            ) : (
+              <div className="bg-rose-950/80 border border-rose-500/50 rounded-xl p-3 text-center space-y-2 animate-fadeIn">
+                <p className="text-xs text-rose-200 font-semibold">
+                  Увага! Скинути ВСІ дані, бали та повернути шаблонні завдання й призи?
+                </p>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setShowFactoryConfirm(false)}
+                    className="flex-1 py-1.5 bg-slate-800 text-slate-300 text-xs font-bold rounded-lg"
+                  >
+                    Скасувати
+                  </button>
+                  <button
+                    onClick={handleConfirmFactoryReset}
+                    className="flex-1 py-1.5 bg-rose-600 text-white text-xs font-bold rounded-lg"
+                  >
+                    Скинути все!
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Invite Partner Link */}
         <div className="bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-slate-900 p-3.5 rounded-xl border border-indigo-500/30 space-y-2.5">
           <div className="flex items-center justify-between">
@@ -86,7 +175,7 @@ export const HouseholdShareModal: React.FC = () => {
           </div>
 
           <p className="text-xs text-slate-300">
-            Надішліть це посилання партнеру для синхронізації в одному спільному «Домі» (максимум 2 користувачі).
+            Надішліть це посилання партнеру для синхронізації в одному спільному «Домі».
           </p>
 
           <div className="flex space-x-2">

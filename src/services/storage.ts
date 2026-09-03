@@ -466,9 +466,30 @@ class StorageService {
     this.setItem(STORAGE_KEYS.ROULETTE_ITEMS, items);
   }
 
-  // Reset current cycle / clear XP for new month
+  // Reset current cycle: clears activity logs & zeros out counter totals for a new month
   public resetCycle(nextEndDateISO: string): void {
     this.updateHousehold({ period_end_date: nextEndDateISO });
+    this.setItem(STORAGE_KEYS.ACTIVITY_LOGS, []);
+
+    // Reset counters to 0 for new cycle
+    const counters = this.getCounters().map((c) => ({ ...c, total_count: 0 }));
+    this.setItem(STORAGE_KEYS.COUNTERS, counters);
+  }
+
+  // Factory Reset: Wipes all data and resets completely back to initial template defaults
+  public factoryReset(): void {
+    Object.values(STORAGE_KEYS).forEach((key) => {
+      localStorage.removeItem(key);
+    });
+    localStorage.removeItem('duodone_welcome_dismissed');
+
+    this.setItem(STORAGE_KEYS.USERS, defaultUsers);
+    this.setItem(STORAGE_KEYS.HOUSEHOLD, defaultHousehold);
+    this.setItem(STORAGE_KEYS.TASKS, defaultTasks);
+    this.setItem(STORAGE_KEYS.COUNTERS, defaultCounters);
+    this.setItem(STORAGE_KEYS.ROULETTE_ITEMS, defaultRouletteItems);
+    this.setItem(STORAGE_KEYS.ACTIVITY_LOGS, defaultLogs);
+    this.setItem(STORAGE_KEYS.ACTIVE_USER_ID, defaultUsers[0].id);
   }
 }
 

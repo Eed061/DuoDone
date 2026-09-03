@@ -25,6 +25,7 @@ interface AppContextType {
   saveRouletteItem: (item: RouletteItem) => void;
   deleteRouletteItem: (itemId: string) => void;
   resetCycle: () => void;
+  factoryReset: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -38,15 +39,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [rouletteItems, setRouletteItems] = useState<RouletteItem[]>([]);
 
-  // Initialize storage & state
-  useEffect(() => {
-    initTelegramWebApp();
-    storage.initStorage();
-
+  const loadAllData = () => {
     const storedUsers = storage.getUsers();
     const telegramUser = getTelegramUser();
 
-    // If running in Telegram with a user name, update active user 1 name
     if (telegramUser && storedUsers.length > 0) {
       storedUsers[0].first_name = telegramUser.first_name;
       if (telegramUser.photo_url) {
@@ -61,6 +57,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCounters(storage.getCounters());
     setActivityLogs(storage.getActivityLogs());
     setRouletteItems(storage.getRouletteItems());
+  };
+
+  // Initialize storage & state
+  useEffect(() => {
+    initTelegramWebApp();
+    storage.initStorage();
+    loadAllData();
   }, []);
 
   const activeUser = useMemo(() => {
@@ -162,7 +165,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const nextDate = new Date();
     nextDate.setMonth(nextDate.getMonth() + 1);
     storage.resetCycle(nextDate.toISOString());
+
     setHousehold(storage.getHousehold());
+    setActivityLogs([]);
+    setCounters(storage.getCounters());
+  };
+
+  const handleFactoryReset = () => {
+    triggerSuccessHaptic();
+    storage.factoryReset();
+    loadAllData();
   };
 
   return (
@@ -189,6 +201,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         saveRouletteItem: handleSaveRouletteItem,
         deleteRouletteItem: handleDeleteRouletteItem,
         resetCycle: handleResetCycle,
+        factoryReset: handleFactoryReset,
       }}
     >
       {children}
