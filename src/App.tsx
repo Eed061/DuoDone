@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/layout/Header';
 import { Navbar, TabType } from './components/layout/Navbar';
+import { QuickStartBanner } from './components/dashboard/QuickStartBanner';
 import { XpBalancerCard } from './components/dashboard/XpBalancerCard';
 import { PingPongCard } from './components/dashboard/PingPongCard';
 import { CounterTile } from './components/dashboard/CounterTile';
@@ -14,7 +15,7 @@ import { HouseholdShareModal } from './components/settings/HouseholdShareModal';
 import { TaskManager } from './components/settings/TaskManager';
 import { RouletteManager } from './components/settings/RouletteManager';
 import { Task, Counter } from './types';
-import { Sparkles, ChevronDown, ChevronUp, Layers, CheckCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const DashboardContent: React.FC = () => {
   const { household, tasks, counters, completeTask, incrementCounter } = useApp();
@@ -85,6 +86,9 @@ const DashboardContent: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-20 animate-fadeIn">
+      {/* 0. Quick Start Banner (Can be closed in 1 tap) */}
+      <QuickStartBanner />
+
       {/* 1. DuoDone Balancer Widget */}
       {household.show_balancer_widget && <XpBalancerCard />}
 
