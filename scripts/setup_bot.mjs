@@ -1,7 +1,7 @@
 import https from 'https';
 
 const BOT_TOKEN = '8610123389:AAEB_fhurfxpSJZxQtceltu7ez4WhMMYjAo';
-const WEB_APP_URL = 'https://duodone.vercel.app';
+const WEBHOOK_URL = 'https://duodone-one.vercel.app/api/bot';
 
 function telegramPost(method, bodyData) {
   return new Promise((resolve, reject) => {
@@ -40,21 +40,12 @@ function telegramPost(method, bodyData) {
 }
 
 async function run() {
-  console.log('🤖 Updating full description...');
+  console.log('🤖 Registering Webhook for Telegram Bot...');
 
-  const cleanDescription = `DuoDone — веб-застосунок для пар та сімей для прозорого розподілу побутових завдань 🤝
-
-🏓 Симетричний пінг-понг: почергова передача ходу конкретної справи.
-⚖️ Балансир XP балів: спільний залік з перетягуванням каната.
-🎡 Рулетка долі: розіграш призів та покарань наприкінці місяця.
-🔢 Лічильники дій: автономні клікери з живим фотопідтвердженням.
-
-Натисніть кнопку «Відкрити DuoDone 🏓» нижче!`;
-
-  const fullDescRes = await telegramPost('setMyDescription', {
-    description: cleanDescription,
+  const hookRes = await telegramPost('setWebhook', {
+    url: WEBHOOK_URL,
   });
-  console.log('setMyDescription:', fullDescRes);
+  console.log('setWebhook:', hookRes);
 }
 
 run().catch(console.error);

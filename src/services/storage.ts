@@ -293,6 +293,16 @@ class StorageService {
     return this.getItem(STORAGE_KEYS.USERS, defaultUsers);
   }
 
+  public updateUser(userId: string, updates: Partial<User>): User[] {
+    const users = this.getUsers();
+    const idx = users.findIndex((u) => u.id === userId);
+    if (idx >= 0) {
+      users[idx] = { ...users[idx], ...updates };
+      this.setItem(STORAGE_KEYS.USERS, users);
+    }
+    return users;
+  }
+
   public getActiveUserId(): string {
     return this.getItem(STORAGE_KEYS.ACTIVE_USER_ID, defaultUsers[0].id);
   }

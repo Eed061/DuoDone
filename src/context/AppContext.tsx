@@ -14,6 +14,7 @@ interface AppContextType {
   rouletteItems: RouletteItem[];
   userXpMap: Record<string, number>;
   switchActiveUser: (userId: string) => void;
+  updateUser: (userId: string, updates: Partial<User>) => void;
   updateHousehold: (updates: Partial<Household>) => void;
   completeTask: (taskId: string, photoUrl?: string | null) => Promise<void>;
   incrementCounter: (counterId: string, photoUrl?: string | null) => Promise<void>;
@@ -90,6 +91,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     triggerHaptic('light');
     setActiveUserId(userId);
     storage.setActiveUserId(userId);
+  };
+
+  const handleUpdateUser = (userId: string, updates: Partial<User>) => {
+    triggerHaptic('medium');
+    const updatedUsers = storage.updateUser(userId, updates);
+    setUsers([...updatedUsers]);
   };
 
   const handleUpdateHousehold = (updates: Partial<Household>) => {
@@ -171,6 +178,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         rouletteItems,
         userXpMap,
         switchActiveUser,
+        updateUser: handleUpdateUser,
         updateHousehold: handleUpdateHousehold,
         completeTask: handleCompleteTask,
         incrementCounter: handleIncrementCounter,
