@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Sparkles, ToggleLeft, ToggleRight, MessageSquare, Cat } from 'lucide-react';
+import { ToggleLeft, ToggleRight, MessageSquare, Edit3 } from 'lucide-react';
 import { CatCounselor } from '../common/CatCounselor';
 
 export const CatSettings: React.FC = () => {
@@ -8,16 +8,17 @@ export const CatSettings: React.FC = () => {
   const [showTestPopup, setShowTestPopup] = useState(false);
 
   const isEnabled = household.cat_counselor_enabled !== false;
-  const currentName = household.cat_counselor_name || 'Мур-Амур';
-
-  const nameOptions = ['Мур-Амур', 'Ді-Ді', 'Барсік Всемогутній', 'Пушистик'];
+  const [catNameInput, setCatNameInput] = useState(household.cat_counselor_name || 'Барсік Всемогутній');
 
   const toggleEnabled = () => {
     updateHousehold({ cat_counselor_enabled: !isEnabled });
   };
 
-  const handleSelectName = (name: string) => {
-    updateHousehold({ cat_counselor_name: name });
+  const handleSaveName = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (catNameInput.trim()) {
+      updateHousehold({ cat_counselor_name: catNameInput.trim() });
+    }
   };
 
   return (
@@ -52,31 +53,31 @@ export const CatSettings: React.FC = () => {
 
       {isEnabled && (
         <div className="space-y-3 animate-fadeIn">
-          {/* Name Selector */}
-          <div>
-            <label className="text-[11px] font-semibold text-slate-300 mb-1.5 block">
-              Оберіть ім'я вашого котика:
+          {/* Custom Name Input Form */}
+          <form onSubmit={handleSaveName} className="space-y-1.5">
+            <label className="text-[11px] font-semibold text-slate-300 flex items-center justify-between">
+              <span>Введіть ім'я для вашого котика:</span>
+              <span className="text-[10px] text-amber-400 font-bold">
+                За замовчуванням: Барсік Всемогутній
+              </span>
             </label>
-            <div className="grid grid-cols-2 gap-1.5">
-              {nameOptions.map((name) => {
-                const isSelected = currentName === name;
-                return (
-                  <button
-                    key={name}
-                    onClick={() => handleSelectName(name)}
-                    className={`py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 border ${
-                      isSelected
-                        ? 'bg-amber-500/20 text-amber-300 border-amber-400/80 shadow-sm'
-                        : 'bg-slate-900/60 text-slate-400 border-slate-700 hover:text-slate-200'
-                    }`}
-                  >
-                    <span>🐾</span>
-                    <span>{name}</span>
-                  </button>
-                );
-              })}
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={catNameInput}
+                onChange={(e) => setCatNameInput(e.target.value)}
+                placeholder="Наприклад: Барсік Всемогутній"
+                className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+                required
+              />
+              <button
+                type="submit"
+                className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold px-3 py-2 rounded-xl border border-amber-500/40"
+              >
+                Зберегти ім'я
+              </button>
             </div>
-          </div>
+          </form>
 
           {/* Trigger on demand */}
           <button

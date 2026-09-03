@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, Sparkles, Heart } from 'lucide-react';
+import { X } from 'lucide-react';
 import { triggerHaptic } from '../../services/telegram';
 
 const CAT_QUOTES = [
   'Підбивати підсумки місяця краще за келихом вина 🍷 Але дивіться, щоб не дійшло до поножовщини! 😅',
-  'Пам’ятайте: Всесвіт надав вам другу половинку не для суперечок через посуд! А посуд зачекає до завтра ✨',
-  'Життя — це не пуста, як зв’язала! Побутові проблеми дрібні, а ваше кохання — це цілий Всесвіт 💖',
-  'Будь-який побутовий конфлікт завжди вирішується обіймами. І шматочком ковбаски 🍖',
-  'Я котик з великими очима 🐱 і вважаю, що ви обоє — котики! Залиште пилосос і сходіть на побачення 🎬',
-  'Нерви дорожчі за розкидані шкарпетки 🧦 Якщо хтось забув винести сміття — закрутіть рулетку на масаж 💆‍♂️',
-  'Келих вина + гарний настрій = 0 претензій щодо прибирання. Перевірено мур-експертами! 🥂',
-  'Життя надто коротке, щоб сваритися через миття вікон. Обійміться просто зараз! 🥰',
+  'Всесвіт надав вам другу половинку для кохання, а не для війни через посуд! Посуд зачекає до завтра 💖',
+  'Будь-який побутовий конфлікт завжди вирішується обіймами... і шматочком ковбаски 🍖',
+  'Життя надто коротке, щоб сваритися через розкидані шкарпетки. Залиште пилосос і сходіть на фільм 🎬',
+  'Якщо хтось забув винести сміття — не сумуйте, просто закрутіть рулетку на масаж 💆‍♂️',
+  'Кава у ліжко здатна пробачити навіть непомиту пательню. Випробувано! ☕',
+  'Замість суперечок про вечерю — просто замовте піцу. Шлунок ситий, родина ціла! 🍕',
+  'Диван не питає, хто скільки балів заробив. Диван просто чекає на вас обох 🛋️',
+  'Непомита чашка — це не зрада батьківщини. Видихніть і поцілуйтесь 💋',
+  'Пам’ятайте: перемагає не той, у кого більше XP, а той, хто першим зробив обійми 🤝',
+  'Келих вина + обійми = 0 претензій щодо прибирання. Перевірено мур-експертами! 🥂',
+  'Найкращий спосіб вибачити за незорієнтовані тапочки — це вечеря у ліжку 🥞',
+  'Я Барсік Всемогутній і я наказую вам негайно обійнятися і забути про пилосос! 🐾',
 ];
 
 interface CatCounselorProps {
@@ -22,7 +27,7 @@ interface CatCounselorProps {
 export const CatCounselor: React.FC<CatCounselorProps> = ({ forceShow, onForceClose }) => {
   const { household } = useApp();
   const isEnabled = household.cat_counselor_enabled !== false; // enabled by default
-  const catName = household.cat_counselor_name || 'Мур-Амур';
+  const catName = household.cat_counselor_name || 'Барсік Всемогутній';
 
   const [visible, setVisible] = useState(false);
   const [currentQuote, setCurrentQuote] = useState('');
@@ -38,17 +43,17 @@ export const CatCounselor: React.FC<CatCounselorProps> = ({ forceShow, onForceCl
       return;
     }
 
-    // Initial delayed popup after 6 seconds
+    // Initial delayed popup (after 25s)
     const initialTimer = setTimeout(() => {
       pickRandomQuote();
       setVisible(true);
-    }, 6000);
+    }, 25000);
 
-    // Periodic random popup every 60 seconds
+    // Infrequent periodic popup (every 3.5 minutes)
     const interval = setInterval(() => {
       pickRandomQuote();
       setVisible(true);
-    }, 60000);
+    }, 210000);
 
     return () => {
       clearTimeout(initialTimer);
@@ -72,46 +77,45 @@ export const CatCounselor: React.FC<CatCounselorProps> = ({ forceShow, onForceCl
   };
 
   return (
-    <div className="fixed bottom-20 right-3 left-3 z-50 max-w-sm mx-auto animate-bounceIn">
-      <div className="bg-gradient-to-r from-amber-950/95 via-slate-900/95 to-purple-950/95 border-2 border-amber-400/80 rounded-2xl p-3.5 shadow-2xl backdrop-blur-md relative overflow-hidden flex items-start space-x-3">
-        {/* Decorative ambient glow */}
-        <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-xl pointer-events-none" />
-
-        {/* Close Button ✕ */}
-        <button
-          onClick={handleClose}
-          className="absolute top-2 right-2 text-amber-200/60 hover:text-white p-1 rounded-lg hover:bg-slate-800/80 transition-colors z-10"
-          title="Сховати котика"
-        >
-          <X className="w-4 h-4" />
-        </button>
-
-        {/* Cat Avatar with big eyes */}
-        <div className="relative shrink-0 pt-1">
-          <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 p-0.5 shadow-lg shadow-amber-500/30">
-            <div className="w-full h-full rounded-[14px] bg-slate-950 flex items-center justify-center text-3xl shadow-inner animate-pulse">
-              🐱
-            </div>
-          </div>
-          <span className="absolute -bottom-1 -right-1 bg-amber-400 text-slate-950 text-[9px] font-black px-1 py-0.2 rounded-full border border-slate-900 shadow">
+    <div className="fixed bottom-16 right-2 left-2 z-50 max-w-sm mx-auto animate-slideUp border-none">
+      <div className="relative flex items-end space-x-2">
+        {/* Realistic Peeking Cat Head Cutout (no box container) */}
+        <div className="relative shrink-0 -mb-2 group">
+          <img
+            src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=200&auto=format&fit=crop&q=80"
+            alt={catName}
+            className="w-16 h-16 rounded-full object-cover border-2 border-amber-400 shadow-2xl ring-4 ring-amber-500/20 transform hover:scale-110 transition-transform"
+          />
+          <span className="absolute -top-1 -right-1 text-base drop-shadow animate-bounce">
             🐾
           </span>
         </div>
 
-        {/* Speech Bubble Content */}
-        <div className="flex-1 pr-5">
-          <div className="flex items-center space-x-1.5 mb-1">
-            <span className="font-extrabold text-amber-300 text-xs tracking-tight">
-              Котик {catName}
-            </span>
-            <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded-md font-bold border border-amber-500/30">
-              Порада дня ✨
-            </span>
-          </div>
+        {/* Speech Bubble floating next to Peeking Cat */}
+        <div className="flex-1 bg-gradient-to-br from-slate-900/95 via-amber-950/95 to-slate-900/95 border-2 border-amber-400/80 rounded-2xl rounded-bl-none p-3 shadow-2xl backdrop-blur-md relative overflow-hidden">
+          {/* Close Button ✕ */}
+          <button
+            onClick={handleClose}
+            className="absolute top-2 right-2 text-amber-200/70 hover:text-white p-1 rounded-lg hover:bg-slate-800/80 transition-colors z-10"
+            title="Сховати котика"
+          >
+            <X className="w-4 h-4" />
+          </button>
 
-          <p className="text-xs text-slate-100 font-medium leading-snug">
-            "{currentQuote}"
-          </p>
+          <div className="pr-5">
+            <div className="flex items-center space-x-1.5 mb-1">
+              <span className="font-extrabold text-amber-300 text-xs tracking-tight">
+                {catName} 🐱
+              </span>
+              <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded-md font-bold border border-amber-500/30">
+                Мудрість
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-100 font-medium leading-snug tracking-tight">
+              "{currentQuote}"
+            </p>
+          </div>
         </div>
       </div>
     </div>
