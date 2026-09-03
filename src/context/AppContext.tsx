@@ -114,6 +114,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     setTasks((prev) => prev.map((t) => (t.id === taskId ? task : t)));
     setActivityLogs((prev) => [log, ...prev]);
+
+    // Dispatch cat reaction event
+    window.dispatchEvent(new CustomEvent('duodone_task_completed'));
   };
 
   const handleIncrementCounter = async (counterId: string, photoUrl?: string | null) => {
@@ -122,6 +125,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     setCounters((prev) => prev.map((c) => (c.id === counterId ? counter : c)));
     setActivityLogs((prev) => [log, ...prev]);
+
+    // Dispatch cat reaction event
+    window.dispatchEvent(new CustomEvent('duodone_task_completed'));
   };
 
   const handleSaveTask = (task: Task) => {
