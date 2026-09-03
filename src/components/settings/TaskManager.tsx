@@ -1,13 +1,37 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Task, Counter, PhotoMode } from '../../types';
-import { Plus, Trash2, Edit, Camera, Sparkles, Check } from 'lucide-react';
+import { Plus, Trash2, Eye, EyeOff, Smile, Check } from 'lucide-react';
+
+const EMOJI_CATEGORIES = [
+  {
+    name: '🧹 Побут',
+    emojis: ['🧽', '🗑️', '🧹', '🚽', '🪟', '🧺', '🛁', '🪠', '🧼', '🧯', '🧦', '👗', '👔', '🛏️', '🛋️', '🔑'],
+  },
+  {
+    name: '🍳 Їжа та Кухня',
+    emojis: ['🍳', '🥣', '☕', '🥂', '🛒', '🍲', '🍕', '🥐', '🍏', '🍇', '🍰', '🍣', '🍷', '🍺', '🥤', '🍼'],
+  },
+  {
+    name: '🪴 Тварини та Дім',
+    emojis: ['🪴', '🐈', '🐕', '🐱', '🐶', '🦜', '🐠', '🌱', '💐', '🌻', '🌸', '🌵', '🐾'],
+  },
+  {
+    name: '🚗 Авто та Техніка',
+    emojis: ['🚗', '🔧', '🪛', '🔨', '⚡', '📦', '💻', '📱', '🎮', '🚲', '⛽', '🛵'],
+  },
+  {
+    name: '💖 Романтика та Дозвілля',
+    emojis: ['💖', '❤️', '👩‍❤️‍👨', '💍', '🎁', '🏖️', '🎬', '🍿', '🏋️‍♀️', '🧘‍♂️', '💊', '💅', '🎉'],
+  },
+];
 
 export const TaskManager: React.FC = () => {
   const { tasks, counters, saveTask, deleteTask, saveCounter, deleteCounter, activeUser, household } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<'tasks' | 'counters'>('tasks');
   const [showForm, setShowForm] = useState(false);
+  const [activeCategoryIdx, setActiveCategoryIdx] = useState(0);
 
   // New Task state
   const [taskTitle, setTaskTitle] = useState('');
@@ -21,8 +45,6 @@ export const TaskManager: React.FC = () => {
   const [counterPhotoMode, setCounterPhotoMode] = useState<PhotoMode>('none');
   const [counterStep, setCounterStep] = useState(1);
 
-  const emojiList = ['🧽', '🗑️', '🧹', '🚽', '🪟', '🪴', '🧺', '🍳', '🛒', '🚗', '🐈', '🚿'];
-
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskTitle.trim()) return;
@@ -31,7 +53,7 @@ export const TaskManager: React.FC = () => {
       id: `task-${Date.now()}`,
       household_id: household.id,
       title: taskTitle.trim(),
-      icon: taskIcon,
+      icon: taskIcon || '🧽',
       xp_points: taskXp,
       photo_required: taskPhotoRequired,
       current_turn_user_id: activeUser.id,
@@ -54,7 +76,7 @@ export const TaskManager: React.FC = () => {
       household_id: household.id,
       created_by_user_id: activeUser.id,
       title: counterTitle.trim(),
-      icon: counterIcon,
+      icon: counterIcon || '🪴',
       photo_mode: counterPhotoMode,
       step: counterStep,
       total_count: 0,
@@ -65,6 +87,14 @@ export const TaskManager: React.FC = () => {
     saveCounter(newCounter);
     setCounterTitle('');
     setShowForm(false);
+  };
+
+  const toggleTaskVisibility = (task: Task) => {
+    saveTask({ ...task, show_on_dashboard: !task.show_on_dashboard });
+  };
+
+  const toggleCounterVisibility = (counter: Counter) => {
+    saveCounter({ ...counter, show_on_dashboard: !counter.show_on_dashboard });
   };
 
   return (
@@ -80,7 +110,7 @@ export const TaskManager: React.FC = () => {
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            DuoDone Завдання
+            DuoDone Завдання ({tasks.length})
           </button>
           <button
             onClick={() => { setActiveSubTab('counters'); setShowForm(false); }}
@@ -90,7 +120,7 @@ export const TaskManager: React.FC = () => {
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Лічильники
+            Лічильники ({counters.length})
           </button>
         </div>
 
@@ -124,18 +154,55 @@ export const TaskManager: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="text-[11px] font-semibold text-slate-300">Оберіть емодзі</label>
-                <div className="flex space-x-1.5 overflow-x-auto py-1">
-                  {emojiList.map((emoji) => (
+              {/* Emoji picker with categories and Android keyboard input */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-semibold text-slate-300">Вибір емодзі</label>
+                  <span className="text-[10px] text-indigo-400 font-bold bg-slate-800 px-2 py-0.5 rounded-md">
+                    Обрано: {taskIcon}
+                  </span>
+                </div>
+
+                {/* Custom Android Emoji Input */}
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={taskIcon}
+                    onChange={(e) => setTaskIcon(e.target.value)}
+                    placeholder="Введіть будь-який емодзі з клавіатури Android..."
+                    className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-center text-white focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Emoji Categories Tabs */}
+                <div className="flex space-x-1 overflow-x-auto py-1 border-t border-b border-slate-800">
+                  {EMOJI_CATEGORIES.map((cat, idx) => (
+                    <button
+                      key={cat.name}
+                      type="button"
+                      onClick={() => setActiveCategoryIdx(idx)}
+                      className={`text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap transition-colors ${
+                        activeCategoryIdx === idx
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Emojis Grid for active category */}
+                <div className="grid grid-cols-8 gap-1 py-1 max-h-32 overflow-y-auto">
+                  {EMOJI_CATEGORIES[activeCategoryIdx].emojis.map((emoji) => (
                     <button
                       key={emoji}
                       type="button"
                       onClick={() => setTaskIcon(emoji)}
-                      className={`text-xl p-1.5 rounded-xl border transition-transform ${
+                      className={`text-xl p-1.5 rounded-xl border transition-all ${
                         taskIcon === emoji
-                          ? 'bg-indigo-600/40 border-indigo-400 scale-110'
-                          : 'bg-slate-800 border-slate-700'
+                          ? 'bg-indigo-600/50 border-indigo-400 scale-110 shadow-md'
+                          : 'bg-slate-800/80 border-slate-700 hover:bg-slate-700'
                       }`}
                     >
                       {emoji}
@@ -193,18 +260,55 @@ export const TaskManager: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="text-[11px] font-semibold text-slate-300">Оберіть емодзі</label>
-                <div className="flex space-x-1.5 overflow-x-auto py-1">
-                  {emojiList.map((emoji) => (
+              {/* Emoji picker for Counter */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-semibold text-slate-300">Вибір емодзі</label>
+                  <span className="text-[10px] text-indigo-400 font-bold bg-slate-800 px-2 py-0.5 rounded-md">
+                    Обрано: {counterIcon}
+                  </span>
+                </div>
+
+                {/* Custom Android Emoji Input */}
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={counterIcon}
+                    onChange={(e) => setCounterIcon(e.target.value)}
+                    placeholder="Введіть будь-який емодзі з клавіатури Android..."
+                    className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-center text-white focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Emoji Categories Tabs */}
+                <div className="flex space-x-1 overflow-x-auto py-1 border-t border-b border-slate-800">
+                  {EMOJI_CATEGORIES.map((cat, idx) => (
+                    <button
+                      key={cat.name}
+                      type="button"
+                      onClick={() => setActiveCategoryIdx(idx)}
+                      className={`text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap transition-colors ${
+                        activeCategoryIdx === idx
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Emojis Grid for active category */}
+                <div className="grid grid-cols-8 gap-1 py-1 max-h-32 overflow-y-auto">
+                  {EMOJI_CATEGORIES[activeCategoryIdx].emojis.map((emoji) => (
                     <button
                       key={emoji}
                       type="button"
                       onClick={() => setCounterIcon(emoji)}
-                      className={`text-xl p-1.5 rounded-xl border transition-transform ${
+                      className={`text-xl p-1.5 rounded-xl border transition-all ${
                         counterIcon === emoji
-                          ? 'bg-indigo-600/40 border-indigo-400 scale-110'
-                          : 'bg-slate-800 border-slate-700'
+                          ? 'bg-indigo-600/50 border-indigo-400 scale-110 shadow-md'
+                          : 'bg-slate-800/80 border-slate-700 hover:bg-slate-700'
                       }`}
                     >
                       {emoji}
@@ -250,7 +354,7 @@ export const TaskManager: React.FC = () => {
         </div>
       )}
 
-      {/* List items */}
+      {/* List items with Show / Hide visibility toggle */}
       <div className="space-y-2">
         {activeSubTab === 'tasks' ? (
           tasks.map((task) => (
@@ -265,12 +369,28 @@ export const TaskManager: React.FC = () => {
                   <span className="text-[10px] text-amber-400 font-semibold">{task.xp_points} XP</span>
                 </div>
               </div>
-              <button
-                onClick={() => deleteTask(task.id)}
-                className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+
+              <div className="flex items-center space-x-1.5">
+                <button
+                  onClick={() => toggleTaskVisibility(task)}
+                  className={`p-1.5 rounded-lg border text-xs font-semibold flex items-center space-x-1 transition-colors ${
+                    task.show_on_dashboard
+                      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+                      : 'bg-slate-800 text-slate-500 border-slate-700'
+                  }`}
+                  title={task.show_on_dashboard ? 'Сховати з головного екрана' : 'Показати на головному екрані'}
+                >
+                  {task.show_on_dashboard ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                </button>
+
+                <button
+                  onClick={() => deleteTask(task.id)}
+                  className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800"
+                  title="Видалити"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           ))
         ) : (
@@ -286,12 +406,28 @@ export const TaskManager: React.FC = () => {
                   <span className="text-[10px] text-indigo-400 font-semibold">Всього: {counter.total_count}</span>
                 </div>
               </div>
-              <button
-                onClick={() => deleteCounter(counter.id)}
-                className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+
+              <div className="flex items-center space-x-1.5">
+                <button
+                  onClick={() => toggleCounterVisibility(counter)}
+                  className={`p-1.5 rounded-lg border text-xs font-semibold flex items-center space-x-1 transition-colors ${
+                    counter.show_on_dashboard
+                      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+                      : 'bg-slate-800 text-slate-500 border-slate-700'
+                  }`}
+                  title={counter.show_on_dashboard ? 'Сховати з головного екрана' : 'Показати на головному екрані'}
+                >
+                  {counter.show_on_dashboard ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                </button>
+
+                <button
+                  onClick={() => deleteCounter(counter.id)}
+                  className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800"
+                  title="Видалити"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           ))
         )}
