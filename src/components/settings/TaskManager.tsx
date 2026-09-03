@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Task, Counter, PhotoMode } from '../../types';
-import { Plus, Trash2, Eye, EyeOff, Smile, Check } from 'lucide-react';
+import { Plus, Trash2, Eye, EyeOff, Edit3, Check, X } from 'lucide-react';
 
 const EMOJI_CATEGORIES = [
   {
@@ -31,61 +31,121 @@ export const TaskManager: React.FC = () => {
 
   const [activeSubTab, setActiveSubTab] = useState<'tasks' | 'counters'>('tasks');
   const [showForm, setShowForm] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingCounter, setEditingCounter] = useState<Counter | null>(null);
   const [activeCategoryIdx, setActiveCategoryIdx] = useState(0);
 
-  // New Task state
+  // Task form state
   const [taskTitle, setTaskTitle] = useState('');
   const [taskIcon, setTaskIcon] = useState('🧽');
   const [taskXp, setTaskXp] = useState(2);
   const [taskPhotoRequired, setTaskPhotoRequired] = useState(false);
 
-  // New Counter state
+  // Counter form state
   const [counterTitle, setCounterTitle] = useState('');
   const [counterIcon, setCounterIcon] = useState('🪴');
   const [counterPhotoMode, setCounterPhotoMode] = useState<PhotoMode>('none');
   const [counterStep, setCounterStep] = useState(1);
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const openCreateTask = () => {
+    setEditingTask(null);
+    setTaskTitle('');
+    setTaskIcon('🧽');
+    setTaskXp(2);
+    setTaskPhotoRequired(false);
+    setShowForm(true);
+  };
+
+  const openEditTask = (task: Task) => {
+    setEditingTask(task);
+    setTaskTitle(task.title);
+    setTaskIcon(task.icon);
+    setTaskXp(task.xp_points);
+    setTaskPhotoRequired(task.photo_required);
+    setShowForm(true);
+  };
+
+  const openCreateCounter = () => {
+    setEditingCounter(null);
+    setCounterTitle('');
+    setCounterIcon('🪴');
+    setCounterPhotoMode('none');
+    setCounterStep(1);
+    setShowForm(true);
+  };
+
+  const openEditCounter = (counter: Counter) => {
+    setEditingCounter(counter);
+    setCounterTitle(counter.title);
+    setCounterIcon(counter.icon);
+    setCounterPhotoMode(counter.photo_mode);
+    setCounterStep(counter.step || 1);
+    setShowForm(true);
+  };
+
+  const handleSaveTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskTitle.trim()) return;
 
-    const newTask: Task = {
-      id: `task-${Date.now()}`,
-      household_id: household.id,
-      title: taskTitle.trim(),
-      icon: taskIcon || '🧽',
-      xp_points: taskXp,
-      photo_required: taskPhotoRequired,
-      current_turn_user_id: activeUser.id,
-      is_active: true,
-      show_on_dashboard: true,
-      created_at: new Date().toISOString(),
-    };
+    if (editingTask) {
+      saveTask({
+        ...editingTask,
+        title: taskTitle.trim(),
+        icon: taskIcon || '🧽',
+        xp_points: taskXp,
+        photo_required: taskPhotoRequired,
+      });
+    } else {
+      const newTask: Task = {
+        id: `task-${Date.now()}`,
+        household_id: household.id,
+        title: taskTitle.trim(),
+        icon: taskIcon || '🧽',
+        xp_points: taskXp,
+        photo_required: taskPhotoRequired,
+        current_turn_user_id: activeUser.id,
+        is_active: true,
+        show_on_dashboard: true,
+        created_at: new Date().toISOString(),
+      };
+      saveTask(newTask);
+    }
 
-    saveTask(newTask);
     setTaskTitle('');
+    setEditingTask(null);
     setShowForm(false);
   };
 
-  const handleCreateCounter = (e: React.FormEvent) => {
+  const handleSaveCounter = (e: React.FormEvent) => {
     e.preventDefault();
     if (!counterTitle.trim()) return;
 
-    const newCounter: Counter = {
-      id: `counter-${Date.now()}`,
-      household_id: household.id,
-      created_by_user_id: activeUser.id,
-      title: counterTitle.trim(),
-      icon: counterIcon || '🪴',
-      photo_mode: counterPhotoMode,
-      step: counterStep,
-      total_count: 0,
-      show_on_dashboard: true,
-      created_at: new Date().toISOString(),
-    };
+    if (editingCounter) {
+      saveCounter({
+        ...editingCounter,
+        title: counterTitle.trim(),
+        icon: counterIcon || '🪴',
+        photo_mode: counterPhotoMode,
+        step: counterStep,
+      });
+    } else {
+      const newCounter: Counter = {
+        id: `counter-${Date.now()}`,
+        household_id: household.id,
+        created_by_user_id: activeUser.id,
+        title: counterTitle.trim(),
+        icon: counterIcon || '🪴',
+        photo_mode: counterPhotoMode,
+        step: counterStep,
+        total_count: 0,
+        show_on_dashboard: true,
+        created_at: new Date().toISOString(),
+      };
+      saveCounter(newCounter);
+    }
 
-    saveCounter(newCounter);
     setCounterTitle('');
+    setEditingCounter(null);
     setShowForm(false);
   };
 
@@ -103,7 +163,7 @@ export const TaskManager: React.FC = () => {
       <div className="flex items-center justify-between border-b border-slate-700/60 pb-3">
         <div className="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/60">
           <button
-            onClick={() => { setActiveSubTab('tasks'); setShowForm(false); }}
+            onClick={() => { setActiveSubTab('tasks'); setShowForm(false); setEditingTask(null); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeSubTab === 'tasks'
                 ? 'bg-indigo-600 text-white shadow-md'
@@ -113,7 +173,7 @@ export const TaskManager: React.FC = () => {
             DuoDone Завдання ({tasks.length})
           </button>
           <button
-            onClick={() => { setActiveSubTab('counters'); setShowForm(false); }}
+            onClick={() => { setActiveSubTab('counters'); setShowForm(false); setEditingCounter(null); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeSubTab === 'counters'
                 ? 'bg-indigo-600 text-white shadow-md'
@@ -125,7 +185,10 @@ export const TaskManager: React.FC = () => {
         </div>
 
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            if (activeSubTab === 'tasks') openCreateTask();
+            else openCreateCounter();
+          }}
           className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center space-x-1 shadow-md"
         >
           <Plus className="w-4 h-4" />
@@ -133,15 +196,24 @@ export const TaskManager: React.FC = () => {
         </button>
       </div>
 
-      {/* Dynamic Creation Form */}
+      {/* Dynamic Creation/Editing Form */}
       {showForm && (
-        <div className="bg-slate-900/90 p-4 rounded-xl border border-indigo-500/30 animate-fadeIn space-y-3">
+        <div className="bg-slate-900/90 p-4 rounded-xl border border-indigo-500/30 animate-fadeIn space-y-3 relative">
+          <button
+            onClick={() => { setShowForm(false); setEditingTask(null); setEditingCounter(null); }}
+            className="absolute top-3 right-3 text-slate-400 hover:text-white p-1"
+          >
+            <X className="w-4 h-4" />
+          </button>
+
           <h4 className="text-xs font-extrabold text-indigo-400 uppercase tracking-wider">
-            {activeSubTab === 'tasks' ? 'Створити нове DuoDone Завдання' : 'Створити новий Лічильник'}
+            {activeSubTab === 'tasks'
+              ? editingTask ? 'Редагувати DuoDone Завдання' : 'Створити нове DuoDone Завдання'
+              : editingCounter ? 'Редагувати Лічильник' : 'Створити новий Лічильник'}
           </h4>
 
           {activeSubTab === 'tasks' ? (
-            <form onSubmit={handleCreateTask} className="space-y-3">
+            <form onSubmit={handleSaveTask} className="space-y-3">
               <div>
                 <label className="text-[11px] font-semibold text-slate-300">Назва завдання</label>
                 <input
@@ -163,7 +235,6 @@ export const TaskManager: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Custom Android Emoji Input */}
                 <div className="flex items-center space-x-2">
                   <input
                     type="text"
@@ -174,7 +245,6 @@ export const TaskManager: React.FC = () => {
                   />
                 </div>
 
-                {/* Emoji Categories Tabs */}
                 <div className="flex space-x-1 overflow-x-auto py-1 border-t border-b border-slate-800">
                   {EMOJI_CATEGORIES.map((cat, idx) => (
                     <button
@@ -192,7 +262,6 @@ export const TaskManager: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Emojis Grid for active category */}
                 <div className="grid grid-cols-8 gap-1 py-1 max-h-32 overflow-y-auto">
                   {EMOJI_CATEGORIES[activeCategoryIdx].emojis.map((emoji) => (
                     <button
@@ -239,15 +308,24 @@ export const TaskManager: React.FC = () => {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg"
-              >
-                Зберегти завдання
-              </button>
+              <div className="flex space-x-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setShowForm(false); setEditingTask(null); }}
+                  className="flex-1 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs"
+                >
+                  Скасувати
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg"
+                >
+                  {editingTask ? 'Зберегти зміни' : 'Створити завдання'}
+                </button>
+              </div>
             </form>
           ) : (
-            <form onSubmit={handleCreateCounter} className="space-y-3">
+            <form onSubmit={handleSaveCounter} className="space-y-3">
               <div>
                 <label className="text-[11px] font-semibold text-slate-300">Назва лічильника</label>
                 <input
@@ -269,7 +347,6 @@ export const TaskManager: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Custom Android Emoji Input */}
                 <div className="flex items-center space-x-2">
                   <input
                     type="text"
@@ -280,7 +357,6 @@ export const TaskManager: React.FC = () => {
                   />
                 </div>
 
-                {/* Emoji Categories Tabs */}
                 <div className="flex space-x-1 overflow-x-auto py-1 border-t border-b border-slate-800">
                   {EMOJI_CATEGORIES.map((cat, idx) => (
                     <button
@@ -298,7 +374,6 @@ export const TaskManager: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Emojis Grid for active category */}
                 <div className="grid grid-cols-8 gap-1 py-1 max-h-32 overflow-y-auto">
                   {EMOJI_CATEGORIES[activeCategoryIdx].emojis.map((emoji) => (
                     <button
@@ -343,18 +418,27 @@ export const TaskManager: React.FC = () => {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg"
-              >
-                Зберегти лічильник
-              </button>
+              <div className="flex space-x-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setShowForm(false); setEditingCounter(null); }}
+                  className="flex-1 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs"
+                >
+                  Скасувати
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg"
+                >
+                  {editingCounter ? 'Зберегти зміни' : 'Створити лічильник'}
+                </button>
+              </div>
             </form>
           )}
         </div>
       )}
 
-      {/* List items with Show / Hide visibility toggle */}
+      {/* List items with Edit, Show/Hide, and Delete buttons */}
       <div className="space-y-2">
         {activeSubTab === 'tasks' ? (
           tasks.map((task) => (
@@ -371,6 +455,14 @@ export const TaskManager: React.FC = () => {
               </div>
 
               <div className="flex items-center space-x-1.5">
+                <button
+                  onClick={() => openEditTask(task)}
+                  className="p-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                  title="Редагувати завдання"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                </button>
+
                 <button
                   onClick={() => toggleTaskVisibility(task)}
                   className={`p-1.5 rounded-lg border text-xs font-semibold flex items-center space-x-1 transition-colors ${
@@ -408,6 +500,14 @@ export const TaskManager: React.FC = () => {
               </div>
 
               <div className="flex items-center space-x-1.5">
+                <button
+                  onClick={() => openEditCounter(counter)}
+                  className="p-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                  title="Редагувати лічильник"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                </button>
+
                 <button
                   onClick={() => toggleCounterVisibility(counter)}
                   className={`p-1.5 rounded-lg border text-xs font-semibold flex items-center space-x-1 transition-colors ${
