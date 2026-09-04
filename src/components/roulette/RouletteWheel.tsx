@@ -71,7 +71,6 @@ export const RouletteWheel: React.FC = () => {
 
     ctx.save();
     ctx.translate(centerX, centerY);
-    ctx.rotate((rotation * Math.PI) / 180);
 
     for (let i = 0; i < numSectors; i++) {
       const startAngle = i * anglePerSector;
@@ -168,7 +167,7 @@ export const RouletteWheel: React.FC = () => {
 
   useEffect(() => {
     drawWheel();
-  }, [rotation, activeSectors, selectedPoolType]);
+  }, [activeSectors, selectedPoolType]);
 
   const spinWheel = () => {
     if (spinning || activeSectors.length === 0) return;
