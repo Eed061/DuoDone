@@ -1,4 +1,4 @@
-export type Language = 'uk' | 'en' | 'pl' | 'de' | 'es' | 'fr';
+export type Language = 'uk' | 'en' | 'pl' | 'de' | 'es' | 'fr' | 'ru';
 
 export interface LanguageOption {
   code: Language;
@@ -14,6 +14,7 @@ export const LANGUAGES: LanguageOption[] = [
   { code: 'de', name: 'Deutsch', nativeName: 'Deutsch', flag: '🇩🇪' },
   { code: 'es', name: 'Español', nativeName: 'Español', flag: '🇪🇸' },
   { code: 'fr', name: 'Français', nativeName: 'Français', flag: '🇫🇷' },
+  { code: 'ru', name: 'Русский', nativeName: 'Русский', flag: '🌐' },
 ];
 
 export const translations: Record<Language, Record<string, string>> = {
@@ -526,6 +527,91 @@ export const translations: Record<Language, Record<string, string>> = {
     share_card_btn: 'Partager la carte sur Telegram 📩',
     copy_invite_btn: 'Copier le texte d\'invitation 📋',
     invite_copied: 'Copié ! 📋',
+  },
+  ru: {
+    // Navigation
+    nav_dashboard: 'Главная',
+    nav_calendar: 'Календарь',
+    nav_roulette: 'Рулетка',
+    nav_settings: 'Настройки',
+    badge_final: 'Финал',
+
+    // Header & User modal
+    space_default: 'Наш уютный дом',
+    edit_profile: 'Редактировать партнеров',
+    active_partner: 'Активный профиль',
+    switch_user_hint: 'Нажмите для переключения активного партнера',
+    edit_names_title: 'Редактирование имен партнеров',
+    partner_1_label: 'Партнер 1 (Имя)',
+    partner_2_label: 'Партнер 2 (Имя)',
+    save_changes: 'Сохранить изменения',
+
+    // Quick Start Banner
+    quick_start_title: 'Все готово! Вводить ничего не нужно 🎉',
+    quick_start_desc: 'Мы уже создали для вашей пары готовые задачи (🧽 Мытье посуды, 🗑️ Вынос мусора) и счетчики. Тапай по кнопкам и передавай ход!',
+    quick_start_btn: 'Супер, погнали! 🚀',
+
+    // Cycle Banner
+    cycle_countdown: '⏳ До конца цикла:',
+    cycle_leading: 'Вы лидируете с',
+    cycle_trailing: 'Лидирует:',
+    cycle_tie: 'Равное количество баллов:',
+    cycle_finished_title: 'Раунд Завершен! 🏆',
+    cycle_winner_msg: 'Вы отлично поработали в этом цикле! 🌟',
+    cycle_loser_msg: 'К сожалению, в этом цикле удача была на стороне партнера...',
+    cycle_tie_msg: 'Ничья по баллам! Равная борьба 🤝',
+    go_to_roulette: 'Перейти к Рулетке 🎡',
+
+    // Balancer Card
+    balancer_title: 'Балансир бытовых дел (XP)',
+    balancer_equal: 'Полная гармония во вкладе! ⚖️',
+    balancer_lead: 'с преимуществом в',
+
+    // Tasks section
+    tasks_section_title: 'Блок «DuoDone» (Очередь задач)',
+    tasks_active_count: 'активных',
+    tasks_empty: 'Нет закрепленных задач. Включите их в Настройках!',
+    task_your_turn: 'Твоя очередь делать! 👈',
+    task_partner_turn: 'Очередь партнера',
+    task_done_btn: 'Сделано! Передать ход 🚀',
+    task_out_of_turn: 'Сделано вне очереди! ⚡',
+
+    // Counters section
+    counters_section_title: 'Блок «Счетчики» (Плитки действий)',
+    counters_on_screen: 'на экране',
+    counters_more: 'Больше счетчиков',
+    counters_hide: 'Скрыть дополнительные счетчики',
+
+    // Roulette Wheel
+    roulette_final_title: 'Итоги периода (Финал)',
+    roulette_winner_label: 'Победитель цикла:',
+    roulette_tie_label: 'Ничья по баллам! Борьба была равной 🤝',
+    roulette_prizes_tab: 'Призы (Победителю)',
+    roulette_penalties_tab: 'Штрафы (Уступающему)',
+    roulette_spin_btn: 'КРУТИТЬ РУЛЕТКУ 🎡',
+    roulette_spinning: 'Вращается...',
+    roulette_winner_choice: 'Случайный выбор судьбы:',
+    roulette_cycle_question: 'Когда хотите завершить цикл?',
+    roulette_weekly: '📅 Еженедельно (7д)',
+    roulette_monthly: '📆 Ежемесячно (30д)',
+    roulette_custom: '⚙️ Свой срок',
+    roulette_off: '⏸️ Без таймера',
+    roulette_set_custom: 'Установить',
+    roulette_days_input_ph: 'Количество дней (напр. 40)',
+    roulette_reset_cycle: 'Начать новый цикл 🔄',
+
+    // Settings
+    settings_language: 'Язык приложения / Language',
+    settings_language_desc: 'Выберите язык интерфейса для вашей пары',
+    settings_cat: 'Кот-Советник 🐱',
+    settings_cat_desc: 'Персональный помощник с юмором и советами',
+    settings_dashboard: 'Конфигуратор Главного Экрана ⚙️',
+    settings_share: 'Пригласить Партнера 📩',
+    settings_tasks: 'Управление Задачами DuoDone 🏓',
+    settings_roulette: 'Управление Рулеткой 🎡',
+    share_card_btn: 'Поделиться карточкой в Telegram 📩',
+    copy_invite_btn: 'Скопировать текст приглашения 📋',
+    invite_copied: 'Скопировано! 📋',
   },
 };
 
