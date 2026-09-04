@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Share2, Copy, Check, QrCode, Users, Edit3, RotateCcw, RefreshCw, AlertTriangle, ArrowRight, Send, Phone } from 'lucide-react';
-import { triggerSuccessHaptic } from '../../services/telegram';
+import { triggerSuccessHaptic, openTelegramLink } from '../../services/telegram';
 import { EditUserModal } from '../layout/EditUserModal';
 
 export const HouseholdShareModal: React.FC = () => {
   const { household, updateHousehold, users, resetCycle, factoryReset, updateUser } = useApp();
   const [copied, setCopied] = useState(false);
+  const [copiedCard, setCopiedCard] = useState(false);
   const [nameInput, setNameInput] = useState(household.name || 'Наш дім');
   const [partnerPhoneInput, setPartnerPhoneInput] = useState(users[1]?.phone_number || '');
   const [showEditUserModal, setShowEditUserModal] = useState(false);
@@ -35,7 +36,26 @@ export const HouseholdShareModal: React.FC = () => {
     const messageText = `🤝 Привіт! Запрошую тебе вести спільний побут у DuoDone! 🏓✨\n\nПрийняти запрошення та верифікуватися як мої партнер (${user2Name}):\n${botInviteLink}`;
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(botInviteLink)}&text=${encodeURIComponent(messageText)}`;
 
-    window.open(shareUrl, '_blank');
+    // Try Web Share API first if supported
+    if (navigator.share) {
+      navigator.share({
+        title: 'Запрошення DuoDone',
+        text: messageText,
+        url: botInviteLink,
+      }).catch(() => {
+        openTelegramLink(shareUrl);
+      });
+    } else {
+      openTelegramLink(shareUrl);
+    }
+  };
+
+  const handleCopyInviteCardText = () => {
+    const cardText = `🤝 Привіт! Запрошую тебе вести спільний побут у DuoDone! 🏓✨\n\nПрийняти запрошення та верифікуватися як мої партнер (${user2Name}):\n${botInviteLink}`;
+    navigator.clipboard.writeText(cardText);
+    triggerSuccessHaptic();
+    setCopiedCard(true);
+    setTimeout(() => setCopiedCard(false), 2000);
   };
 
   const handleSaveName = (e: React.FormEvent) => {
@@ -203,13 +223,32 @@ export const HouseholdShareModal: React.FC = () => {
             />
           </div>
 
-          <button
-            onClick={handleSendTelegramInvite}
-            className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-lg shadow-indigo-500/25 active:scale-95 transition-all"
-          >
-            <Send className="w-4 h-4" />
-            <span>Надіслати картку запрошення у Telegram 📩</span>
-          </button>
+          <div className="grid grid-cols-1 gap-2 pt-1">
+            <button
+              onClick={handleSendTelegramInvite}
+              className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-lg shadow-indigo-500/25 active:scale-95 transition-all"
+            >
+              <Send className="w-4 h-4" />
+              <span>Поділитись карткою у Telegram 📩</span>
+            </button>
+
+            <button
+              onClick={handleCopyInviteCardText}
+              className="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center space-x-1 border border-slate-700 transition-colors"
+            >
+              {copiedCard ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-400">Текст запрошення скопійовано!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Скопіювати текст запрошення 📋</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 

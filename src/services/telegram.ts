@@ -16,6 +16,8 @@ declare global {
         ready: () => void;
         expand: () => void;
         close: () => void;
+        openTelegramLink?: (url: string) => void;
+        openLink?: (url: string) => void;
         HapticFeedback?: {
           impactOccurred: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void;
           notificationOccurred: (type: 'error' | 'success' | 'warning') => void;
@@ -34,6 +36,14 @@ export const initTelegramWebApp = (): void => {
   if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
     window.Telegram.WebApp.ready();
     window.Telegram.WebApp.expand();
+  }
+};
+
+export const openTelegramLink = (url: string): void => {
+  if (typeof window !== 'undefined' && window.Telegram?.WebApp?.openTelegramLink) {
+    window.Telegram.WebApp.openTelegramLink(url);
+  } else {
+    window.open(url, '_blank');
   }
 };
 
