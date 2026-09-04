@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Share2, Copy, Check, QrCode, Users, Edit3, RotateCcw, RefreshCw, AlertTriangle, ArrowRight, Send, Phone } from 'lucide-react';
+import { Copy, Check, Users, Edit3, RotateCcw, RefreshCw, AlertTriangle, ArrowRight, Send } from 'lucide-react';
 import { triggerSuccessHaptic, openTelegramLink } from '../../services/telegram';
 import { EditUserModal } from '../layout/EditUserModal';
 
 export const HouseholdShareModal: React.FC = () => {
-  const { household, updateHousehold, users, resetCycle, factoryReset, updateUser } = useApp();
-  const [copied, setCopied] = useState(false);
+  const { household, updateHousehold, users, resetCycle, factoryReset } = useApp();
   const [copiedCard, setCopiedCard] = useState(false);
   const [nameInput, setNameInput] = useState(household.name || 'Наш дім');
-  const [partnerPhoneInput, setPartnerPhoneInput] = useState(users[1]?.phone_number || '');
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [showFactoryConfirm, setShowFactoryConfirm] = useState(false);
   const [showResetCycleConfirm, setShowResetCycleConfirm] = useState(false);
@@ -18,25 +16,12 @@ export const HouseholdShareModal: React.FC = () => {
   const user2Name = users[1]?.first_name || 'Партнер 2';
   const inviteCode = household.invite_code || 'DUO7789';
 
-  const inviteLink = `https://duodone-one.vercel.app/?invite=${inviteCode}&u1=${encodeURIComponent(user1Name)}&u2=${encodeURIComponent(user2Name)}`;
   const botInviteLink = `https://t.me/DuoDone_bot?start=accept_${inviteCode}`;
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(inviteLink);
-    triggerSuccessHaptic();
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const handleSendTelegramInvite = () => {
-    if (partnerPhoneInput.trim() && users[1]) {
-      updateUser(users[1].id, { phone_number: partnerPhoneInput.trim() });
-    }
-
     const messageText = `🤝 Привіт! Запрошую тебе вести спільний побут у DuoDone! 🏓✨\n\nПрийняти запрошення та верифікуватися як мої партнер (${user2Name}):\n${botInviteLink}`;
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(botInviteLink)}&text=${encodeURIComponent(messageText)}`;
 
-    // Try Web Share API first if supported
     if (navigator.share) {
       navigator.share({
         title: 'Запрошення DuoDone',
@@ -51,7 +36,7 @@ export const HouseholdShareModal: React.FC = () => {
   };
 
   const handleCopyInviteCardText = () => {
-    const cardText = `🤝 Привіт! Запрошую тебе вести спільний побут у DuoDone! 🏓✨\n\nПрийняти запрошення та верифікуватися як мої партнер (${user2Name}):\n${botInviteLink}`;
+    const cardText = `🤝 Привіт! Запрошую тебе вести спільний побут у DuoDone! 🏓✨\n\nПрийняти запрошення та верифікуватися як мій партнер (${user2Name}):\n${botInviteLink}`;
     navigator.clipboard.writeText(cardText);
     triggerSuccessHaptic();
     setCopiedCard(true);
@@ -82,7 +67,7 @@ export const HouseholdShareModal: React.FC = () => {
           <Users className="w-5 h-5 text-indigo-400" />
           <div>
             <h3 className="font-bold text-white text-base">Налаштування Простору та Партнерів</h3>
-            <p className="text-xs text-slate-400">Прив'язка за номером телефону, ID та верифікація</p>
+            <p className="text-xs text-slate-400">Імена партнерів, назва дому та запрошення</p>
           </div>
         </div>
 
@@ -198,30 +183,20 @@ export const HouseholdShareModal: React.FC = () => {
           </div>
         </div>
 
-        {/* Invite Partner via Phone & Telegram */}
+        {/* Invite Partner Buttons ONLY */}
         <div className="bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-slate-900 p-3.5 rounded-xl border border-indigo-500/30 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold text-indigo-300 uppercase tracking-wider">
-              Запрошення та Верифікація Партнера №2
+              Запрошення партнера
             </span>
             <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-md font-mono font-bold">
               Код: {inviteCode}
             </span>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold text-slate-300 flex items-center gap-1">
-              <Phone className="w-3.5 h-3.5 text-indigo-400" />
-              <span>№ телефону або ID партнера в Telegram:</span>
-            </label>
-            <input
-              type="text"
-              value={partnerPhoneInput}
-              onChange={(e) => setPartnerPhoneInput(e.target.value)}
-              placeholder="Наприклад: +380971234567 або @username"
-              className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
-            />
-          </div>
+          <p className="text-xs text-slate-300">
+            Надішліть картку запрошення партнеру для автоматичної верифікації та синхронізації в одному спільному «Домі».
+          </p>
 
           <div className="grid grid-cols-1 gap-2 pt-1">
             <button

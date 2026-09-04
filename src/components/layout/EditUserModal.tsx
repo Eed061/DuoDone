@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, Check, Edit3, Camera, User as UserIcon, Loader2, Smartphone } from 'lucide-react';
+import { X, Check, Edit3, Camera, User as UserIcon, Loader2, Smartphone, ShieldCheck } from 'lucide-react';
 import { compressImageFile } from '../../services/imageCompression';
 import { getTelegramUser } from '../../services/telegram';
 
@@ -17,11 +17,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
 
   const [name1, setName1] = useState(user1.first_name);
   const [avatar1, setAvatar1] = useState(user1.avatar_url || '');
-  const [tgUsername1, setTgUsername1] = useState(user1.telegram_username || '');
 
   const [name2, setName2] = useState(user2.first_name);
   const [avatar2, setAvatar2] = useState(user2.avatar_url || '');
-  const [tgUsername2, setTgUsername2] = useState(user2.telegram_username || '');
 
   const [uploading1, setUploading1] = useState(false);
   const [uploading2, setUploading2] = useState(false);
@@ -54,14 +52,12 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
       updateUser(user1.id, {
         first_name: name1.trim(),
         avatar_url: avatar1,
-        telegram_username: tgUsername1.trim().replace('@', ''),
       });
     }
     if (name2.trim()) {
       updateUser(user2.id, {
         first_name: name2.trim(),
         avatar_url: avatar2,
-        telegram_username: tgUsername2.trim().replace('@', ''),
       });
     }
     onClose();
@@ -82,8 +78,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
             <Edit3 className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-extrabold text-white text-base">Імена, Фото та TG Партнерів</h3>
-            <p className="text-xs text-slate-400">Вкажіть імена та TG @username для прив'язки</p>
+            <h3 className="font-extrabold text-white text-base">Імена та Фото Партнерів</h3>
+            <p className="text-xs text-slate-400">Вкажіть власні імена та аватарки</p>
           </div>
         </div>
 
@@ -121,26 +117,12 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
           </div>
         </div>
 
-        {/* Current TG Account Banner if available */}
-        {tgUser && (
-          <div className="bg-indigo-950/60 border border-indigo-500/30 rounded-xl p-2.5 flex items-center justify-between text-xs">
-            <div>
-              <span className="text-[10px] text-indigo-300 font-bold uppercase tracking-wider block">
-                Твій Telegram акаунт:
-              </span>
-              <span className="text-white font-mono font-semibold">
-                @{tgUser.username || 'немає_username'} (ID: {tgUser.id})
-              </span>
-            </div>
-          </div>
-        )}
-
         <form onSubmit={handleSave} className="space-y-4">
           {/* Partner 1 */}
           <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50 space-y-2.5">
             <label className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider flex items-center justify-between">
               <span className="flex items-center gap-1">👨 Партнер 1</span>
-              <span className="text-[10px] text-slate-400 font-normal">Фото, Ім'я та TG</span>
+              <span className="text-[10px] text-slate-400 font-normal">Фото та Ім'я</span>
             </label>
 
             <div className="flex items-center space-x-3">
@@ -160,7 +142,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
                 </button>
               </div>
 
-              <div className="flex-1 space-y-1.5">
+              <div className="flex-1 space-y-1">
                 <input
                   type="file"
                   accept="image/*"
@@ -173,18 +155,12 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
                   value={name1}
                   onChange={(e) => setName1(e.target.value)}
                   placeholder="Ім'я партнера 1"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                   required
                 />
-                <div className="relative">
-                  <span className="absolute left-2.5 top-1.5 text-slate-500 text-xs font-mono">@</span>
-                  <input
-                    type="text"
-                    value={tgUsername1}
-                    onChange={(e) => setTgUsername1(e.target.value)}
-                    placeholder="Telegram username"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-7 pr-3 py-1.5 text-xs text-indigo-300 font-mono placeholder-slate-600 focus:border-indigo-500 focus:outline-none"
-                  />
+                <div className="flex items-center space-x-1 text-[10px] text-slate-400 pt-0.5">
+                  <ShieldCheck className="w-3 h-3 text-indigo-400" />
+                  <span>TG ID: {user1.telegram_id || 'Прив’язано під час входу'}</span>
                 </div>
               </div>
             </div>
@@ -194,7 +170,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
           <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50 space-y-2.5">
             <label className="text-[11px] font-bold text-pink-400 uppercase tracking-wider flex items-center justify-between">
               <span className="flex items-center gap-1">👩 Партнер 2</span>
-              <span className="text-[10px] text-slate-400 font-normal">Фото, Ім'я та TG</span>
+              <span className="text-[10px] text-slate-400 font-normal">Фото та Ім'я</span>
             </label>
 
             <div className="flex items-center space-x-3">
@@ -214,7 +190,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
                 </button>
               </div>
 
-              <div className="flex-1 space-y-1.5">
+              <div className="flex-1 space-y-1">
                 <input
                   type="file"
                   accept="image/*"
@@ -227,18 +203,12 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
                   value={name2}
                   onChange={(e) => setName2(e.target.value)}
                   placeholder="Ім'я партнера 2"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                   required
                 />
-                <div className="relative">
-                  <span className="absolute left-2.5 top-1.5 text-slate-500 text-xs font-mono">@</span>
-                  <input
-                    type="text"
-                    value={tgUsername2}
-                    onChange={(e) => setTgUsername2(e.target.value)}
-                    placeholder="Telegram username"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-7 pr-3 py-1.5 text-xs text-pink-300 font-mono placeholder-slate-600 focus:border-indigo-500 focus:outline-none"
-                  />
+                <div className="flex items-center space-x-1 text-[10px] text-slate-400 pt-0.5">
+                  <ShieldCheck className="w-3 h-3 text-pink-400" />
+                  <span>TG ID: {user2.telegram_id || 'Прив’язано при прийнятті запрошення'}</span>
                 </div>
               </div>
             </div>

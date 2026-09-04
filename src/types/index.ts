@@ -4,6 +4,7 @@ export type RewardType = 'fixed' | 'roulette';
 export type PhotoMode = 'none' | 'optional' | 'required';
 export type EntityType = 'duodone_task' | 'counter';
 export type RouletteType = 'reward' | 'penalty';
+export type CycleType = 'weekly' | 'monthly' | 'custom' | 'off';
 
 export interface User {
   id: string;
@@ -33,6 +34,9 @@ export interface Household {
   // Cat Counselor Config
   cat_counselor_enabled?: boolean;
   cat_counselor_name?: string;
+  // Cycle Config
+  cycle_type?: CycleType;
+  cycle_days?: number;
 }
 
 export interface Task {

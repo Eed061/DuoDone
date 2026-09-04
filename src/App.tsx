@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/layout/Header';
 import { Navbar, TabType } from './components/layout/Navbar';
 import { QuickStartBanner } from './components/dashboard/QuickStartBanner';
+import { CycleCountdownBanner } from './components/dashboard/CycleCountdownBanner';
 import { XpBalancerCard } from './components/dashboard/XpBalancerCard';
 import { PingPongCard } from './components/dashboard/PingPongCard';
 import { CounterTile } from './components/dashboard/CounterTile';
@@ -19,7 +20,11 @@ import { CatCounselor } from './components/common/CatCounselor';
 import { Task, Counter } from './types';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
-const DashboardContent: React.FC = () => {
+interface DashboardContentProps {
+  onOpenRoulette: () => void;
+}
+
+const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenRoulette }) => {
   const { household, tasks, counters, completeTask, incrementCounter } = useApp();
   const [activeCameraAction, setActiveCameraAction] = useState<{
     type: 'task' | 'counter';
@@ -90,6 +95,9 @@ const DashboardContent: React.FC = () => {
     <div className="space-y-4 pb-20 animate-fadeIn">
       {/* 0. Quick Start Banner (Can be closed in 1 tap) */}
       <QuickStartBanner />
+
+      {/* 0.5 Cycle Countdown Banner */}
+      <CycleCountdownBanner onOpenRoulette={onOpenRoulette} />
 
       {/* 1. DuoDone Balancer Widget */}
       {household.show_balancer_widget && <XpBalancerCard />}
@@ -200,7 +208,7 @@ export const MainApp: React.FC = () => {
       <Header />
 
       <main className="flex-1 max-w-md mx-auto w-full p-4">
-        {activeTab === 'dashboard' && <DashboardContent />}
+        {activeTab === 'dashboard' && <DashboardContent onOpenRoulette={() => setActiveTab('roulette')} />}
         {activeTab === 'calendar' && <CalendarView />}
         {activeTab === 'roulette' && <RouletteWheel />}
         {activeTab === 'settings' && (
