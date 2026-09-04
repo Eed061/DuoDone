@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import confetti from 'canvas-confetti';
-import { Disc, Trophy, Sparkles, RotateCw, AlertTriangle, Gift, ArrowRight, Calendar, Settings, Check, Clock } from 'lucide-react';
+import { RotateCw, AlertTriangle, Gift, ArrowRight, Check, Clock } from 'lucide-react';
 import { triggerHaptic, triggerSuccessHaptic } from '../../services/telegram';
 import { CycleType } from '../../types';
 import { getUkrainianDaysText } from '../dashboard/CycleCountdownBanner';
 
 export const RouletteWheel: React.FC = () => {
-  const { users, activeUser, partnerUser, userXpMap, rouletteItems, household, updateHousehold, resetCycle } = useApp();
+  const { users, userXpMap, rouletteItems, household, updateHousehold, resetCycle, t } = useApp();
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [winnerItem, setWinnerItem] = useState<string | null>(null);
@@ -28,12 +28,10 @@ export const RouletteWheel: React.FC = () => {
   const xp2 = userXpMap[user2.id] || 0;
 
   let periodWinner = user1;
-  let periodLoser = user2;
   let isTie = xp1 === xp2;
 
   if (xp2 > xp1) {
     periodWinner = user2;
-    periodLoser = user1;
   }
 
   // Filter items for selected pool
@@ -265,16 +263,16 @@ export const RouletteWheel: React.FC = () => {
         </div>
 
         <h2 className="font-extrabold text-white text-lg tracking-tight">
-          Підсумки періоду (Фінал)
+          {t('roulette_final_title')}
         </h2>
 
         {!isTie ? (
           <p className="text-xs text-slate-300 mt-1">
-            Переможець циклу: <span className="font-bold text-amber-400">{periodWinner.first_name}</span> (з перевагою у {Math.abs(xp1 - xp2)} XP!)
+            {t('roulette_winner_label')} <span className="font-bold text-amber-400">{periodWinner.first_name}</span> (з перевагою у {Math.abs(xp1 - xp2)} XP!)
           </p>
         ) : (
           <p className="text-xs text-amber-300 mt-1 font-semibold">
-            Нічия в балах! Боротьба була рівною 🤝
+            {t('roulette_tie_label')}
           </p>
         )}
 
@@ -289,7 +287,7 @@ export const RouletteWheel: React.FC = () => {
             }`}
           >
             <Gift className="w-4 h-4" />
-            <span>Призи (Переможцю)</span>
+            <span>{t('roulette_prizes_tab')}</span>
           </button>
           <button
             onClick={() => setSelectedPoolType('penalty')}
@@ -300,7 +298,7 @@ export const RouletteWheel: React.FC = () => {
             }`}
           >
             <AlertTriangle className="w-4 h-4" />
-            <span>Штрафи (Поступаючому)</span>
+            <span>{t('roulette_penalties_tab')}</span>
           </button>
         </div>
       </div>
@@ -336,14 +334,14 @@ export const RouletteWheel: React.FC = () => {
           }`}
         >
           <RotateCw className={`w-5 h-5 ${spinning ? 'animate-spin' : ''}`} />
-          <span>{spinning ? 'Обертається...' : 'КРУТИТИ РУЛЕТКУ 🎡'}</span>
+          <span>{spinning ? t('roulette_spinning') : t('roulette_spin_btn')}</span>
         </button>
 
         {/* Result Announcement Display */}
         {winnerItem && (
           <div className="mt-4 bg-slate-900/90 border-2 border-amber-400 rounded-2xl p-4 text-center max-w-xs w-full animate-bounce shadow-2xl">
             <span className="text-[10px] uppercase font-black tracking-wider text-amber-400">
-              Випадковий вибір долі:
+              {t('roulette_winner_choice')}
             </span>
             <p className="font-extrabold text-white text-base mt-1 leading-snug">{winnerItem}</p>
           </div>
@@ -355,13 +353,9 @@ export const RouletteWheel: React.FC = () => {
         <div className="flex items-center space-x-2 border-b border-slate-800 pb-2.5">
           <Clock className="w-4 h-4 text-amber-400" />
           <h3 className="font-extrabold text-white text-sm">
-            Коли бажаєте завершити цикл?
+            {t('roulette_cycle_question')}
           </h3>
         </div>
-
-        <p className="text-xs text-slate-300 leading-relaxed">
-          Оберіть періодичність підбиття підсумків балів XP та розіграшу рулетки:
-        </p>
 
         <div className="grid grid-cols-2 gap-2 pt-1">
           {/* Weekly */}
@@ -373,7 +367,7 @@ export const RouletteWheel: React.FC = () => {
                 : 'bg-slate-800/60 border-slate-700/70 text-slate-300 hover:bg-slate-800'
             }`}
           >
-            <span>📅 Щотижня (7д)</span>
+            <span>{t('roulette_weekly')}</span>
             {currentCycleType === 'weekly' && <Check className="w-4 h-4 text-indigo-400" />}
           </button>
 
@@ -386,7 +380,7 @@ export const RouletteWheel: React.FC = () => {
                 : 'bg-slate-800/60 border-slate-700/70 text-slate-300 hover:bg-slate-800'
             }`}
           >
-            <span>📆 Щомісяця (30д)</span>
+            <span>{t('roulette_monthly')}</span>
             {currentCycleType === 'monthly' && <Check className="w-4 h-4 text-indigo-400" />}
           </button>
 
@@ -399,7 +393,7 @@ export const RouletteWheel: React.FC = () => {
                 : 'bg-slate-800/60 border-slate-700/70 text-slate-300 hover:bg-slate-800'
             }`}
           >
-            <span>⚙️ Свій термін</span>
+            <span>{t('roulette_custom')}</span>
             {currentCycleType === 'custom' && <Check className="w-4 h-4 text-amber-400" />}
           </button>
 
@@ -412,7 +406,7 @@ export const RouletteWheel: React.FC = () => {
                 : 'bg-slate-800/60 border-slate-700/70 text-slate-400 hover:bg-slate-800'
             }`}
           >
-            <span>⏸️ Без таймера</span>
+            <span>{t('roulette_off')}</span>
             {currentCycleType === 'off' && <Check className="w-4 h-4 text-slate-400" />}
           </button>
         </div>
@@ -427,17 +421,16 @@ export const RouletteWheel: React.FC = () => {
                 max="365"
                 value={customDaysInput}
                 onChange={(e) => setCustomDaysInput(e.target.value)}
-                placeholder="Кількість днів (напр. 40)"
+                placeholder={t('roulette_days_input_ph')}
                 className="w-full bg-slate-950 border border-amber-500/50 rounded-xl py-2 px-3 text-xs font-bold text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
               />
-              <span className="absolute right-3 top-2 text-xs text-slate-400 font-medium">днів</span>
             </div>
 
             <button
               onClick={handleSaveCustomDays}
               className="py-2 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition-colors"
             >
-              Встановити
+              {t('roulette_set_custom')}
             </button>
           </div>
         )}
@@ -445,7 +438,7 @@ export const RouletteWheel: React.FC = () => {
         {/* Current status detail */}
         {currentCycleType !== 'off' && (
           <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 text-xs text-slate-300 flex items-center justify-between mt-2">
-            <span>Залишилось до завершення:</span>
+            <span>{t('cycle_countdown')}</span>
             <span className="font-extrabold text-amber-400">
               {remainingDays} {getUkrainianDaysText(remainingDays)}
             </span>
@@ -455,14 +448,11 @@ export const RouletteWheel: React.FC = () => {
 
       {/* Cycle Reset Action */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg text-center space-y-2">
-        <p className="text-xs text-slate-400">
-          Після визначення переможця та розіграшу ви можете скинути рахунок і почати новий цикл.
-        </p>
         <button
           onClick={resetCycle}
           className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors border border-slate-700/80"
         >
-          <span>Почати новий цикл 🔄</span>
+          <span>{t('roulette_reset_cycle')}</span>
           <ArrowRight className="w-4 h-4 text-indigo-400" />
         </button>
       </div>

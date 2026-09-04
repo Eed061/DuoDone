@@ -2,39 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { X } from 'lucide-react';
 import { triggerHaptic } from '../../services/telegram';
-
-const CAT_GENERAL_QUOTES = [
-  'Підбивати підсумки місяця краще за келихом вина 🍷 Але дивіться, щоб не дійшло до поножовщини! 😅',
-  'Всесвіт надав вам другу половинку для кохання, а не для війни через посуд! Посуд зачекає до завтра 💖',
-  'Будь-який побутовий конфлікт завжди вирішується обіймами... і шматочком ковбаски 🍖',
-  'Життя надто коротке, щоб сваритися через розкидані шкарпетки. Залиште пилосос і сходіть на фільм 🎬',
-  'Якщо хтось забув винести сміття — не сумуйте, просто закрутіть рулетку на масаж 💆‍♂️',
-  'Кава у ліжко здатна пробачити навіть непомиту пательню. Випробувано! ☕',
-  'Замість суперечок про вечерю — просто замовте піцу. Шлунок ситий, родина ціла! 🍕',
-  'Диван не питає, хто скільки балів заробив. Диван просто чекає на вас обох 🛋️',
-  'Непомита чашка — це не зрада батьківщини. Видихніть і поцілуйтесь 💋',
-  'Пам’ятайте: перемагає не той, у кого більше XP, а той, хто першим зробив обійми 🤝',
-  'Келих вина + обійми = 0 претензій щодо прибирання. Перевірено мур-експертами! 🥂',
-  'Найкращий спосіб вибачити за незорієнтовані тапочки — це вечеря у ліжку 🥞',
-  'Я Барсік Всемогутній і я наказую вам негайно обійнятися і забути про пилосос! 🐾',
-];
-
-const CAT_COMPLETION_QUOTES = [
-  'Пишаюсь тобою! Ковбаска в холодильнику — твій заслужений трофей 🥩',
-  'Ти — гордість Нації! Патруль чистоти передає подяку 🎖️',
-  'І що, навіть нічого не розбив? Ну ти даєш! 😳',
-  'Оце так швидкість! Пилосос аж від заздрощів розчулився 💨',
-  'Герой дня! Тепер з чистою совістю можна пити каву і нічого не робити ☕',
-  'Хід передано! Тепер черга вашої другої половинки показати клас 🏓',
-  'Так тримати! Очки XP нараховано, можна відкорковувати вино 🥂',
-  'Миловарня в шоці від твого ентузіазму. Молодець! ✨',
-  'Король прибирання визнаний! Котик дарує +100 балів до карми 🐾',
-  'Завдання виконано! Тепер можна легально прилягти на диванчик 🛋️',
-  'Ну все, тепер точно претендуєш на звання Партнера Року 🏆',
-  'Чистота — запорука здоров’я... і відсутності побутових скандалів! 💖',
-  'Ого, відпрацьовано на 10 з 10! Мур-аплодисменти! 👏',
-  'Хід успішно передано! Подивимось, як впорається партнер 😼',
-];
+import { CAT_QUOTES } from '../../i18n/translations';
 
 interface CatCounselorProps {
   forceShow?: boolean;
@@ -42,15 +10,19 @@ interface CatCounselorProps {
 }
 
 export const CatCounselor: React.FC<CatCounselorProps> = ({ forceShow, onForceClose }) => {
-  const { household } = useApp();
+  const { household, language, t } = useApp();
   const isEnabled = household.cat_counselor_enabled !== false; // enabled by default
-  const catName = household.cat_counselor_name || 'Барсік Всемогутній';
+  const catName = household.cat_counselor_name || 'Барсік';
 
   const [visible, setVisible] = useState(false);
   const [currentQuote, setCurrentQuote] = useState('');
-  const [badgeText, setBadgeText] = useState('Мудрість');
+  const [badgeText, setBadgeText] = useState('Wisdom');
 
-  const pickRandomQuote = (quotesList = CAT_GENERAL_QUOTES, label = 'Мудрість') => {
+  const catQuotesForLang = CAT_QUOTES[language] || CAT_QUOTES.uk;
+
+  const pickRandomQuote = (type: 'general' | 'completion') => {
+    const quotesList = type === 'completion' ? catQuotesForLang.completion : catQuotesForLang.general;
+    const label = type === 'completion' ? t('cat_reaction_badge') : t('cat_wisdom_badge');
     const idx = Math.floor(Math.random() * quotesList.length);
     setCurrentQuote(quotesList[idx]);
     setBadgeText(label);
@@ -64,19 +36,19 @@ export const CatCounselor: React.FC<CatCounselorProps> = ({ forceShow, onForceCl
 
     // Initial delayed popup (after 25s)
     const initialTimer = setTimeout(() => {
-      pickRandomQuote(CAT_GENERAL_QUOTES, 'Мудрість');
+      pickRandomQuote('general');
       setVisible(true);
     }, 25000);
 
     // Infrequent periodic popup (every 3.5 minutes)
     const interval = setInterval(() => {
-      pickRandomQuote(CAT_GENERAL_QUOTES, 'Мудрість');
+      pickRandomQuote('general');
       setVisible(true);
     }, 210000);
 
     // Event listener for task completion
     const handleTaskCompletedEvent = () => {
-      pickRandomQuote(CAT_COMPLETION_QUOTES, 'Реакція 😼');
+      pickRandomQuote('completion');
       setVisible(true);
     };
 
@@ -87,14 +59,14 @@ export const CatCounselor: React.FC<CatCounselorProps> = ({ forceShow, onForceCl
       clearInterval(interval);
       window.removeEventListener('duodone_task_completed', handleTaskCompletedEvent);
     };
-  }, [isEnabled]);
+  }, [isEnabled, language]);
 
   useEffect(() => {
     if (forceShow) {
-      pickRandomQuote(CAT_GENERAL_QUOTES, 'Мудрість');
+      pickRandomQuote('general');
       setVisible(true);
     }
-  }, [forceShow]);
+  }, [forceShow, language]);
 
   if (!isEnabled || !visible) return null;
 
@@ -125,7 +97,7 @@ export const CatCounselor: React.FC<CatCounselorProps> = ({ forceShow, onForceCl
           <button
             onClick={handleClose}
             className="absolute top-2 right-2 text-amber-200/70 hover:text-white p-1 rounded-lg hover:bg-slate-800/80 transition-colors z-10"
-            title="Сховати котика"
+            title={t('cat_close_title')}
           >
             <X className="w-4 h-4" />
           </button>

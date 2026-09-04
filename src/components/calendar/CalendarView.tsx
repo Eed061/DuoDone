@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Image as ImageIcon, Flame } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import { MONTH_NAMES, DAY_NAMES } from '../../i18n/translations';
 
 export const CalendarView: React.FC = () => {
-  const { activityLogs, users } = useApp();
+  const { activityLogs, users, language, t } = useApp();
   const [currentMonthDate, setCurrentMonthDate] = useState<Date>(new Date());
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDate());
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
@@ -14,12 +15,8 @@ export const CalendarView: React.FC = () => {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDayOfWeek = (new Date(year, month, 1).getDay() + 6) % 7; // Monday = 0
 
-  const monthNames = [
-    'Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
-    'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'
-  ];
-
-  const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
+  const monthNames = MONTH_NAMES[language] || MONTH_NAMES.uk;
+  const dayNames = DAY_NAMES[language] || DAY_NAMES.uk;
 
   // Change month
   const prevMonth = () => {
@@ -138,16 +135,16 @@ export const CalendarView: React.FC = () => {
         <h3 className="font-bold text-white text-sm tracking-tight mb-3 flex items-center justify-between">
           <span className="flex items-center gap-1.5">
             <Clock className="w-4 h-4 text-indigo-400" />
-            Стрічка подій за {selectedDay} {monthNames[month]}
+            {t('calendar_timeline_title')} {selectedDay} {monthNames[month]}
           </span>
           <span className="text-xs text-slate-400 font-semibold bg-slate-900 px-2 py-0.5 rounded-md border border-slate-700">
-            {selectedDayLogs.length} подій
+            {selectedDayLogs.length} {t('calendar_events_count')}
           </span>
         </h3>
 
         {selectedDayLogs.length === 0 ? (
           <div className="text-center py-8 text-slate-500 text-xs font-medium bg-slate-900/40 rounded-xl border border-slate-800">
-            В цей день активності не зафіксовано.
+            {t('calendar_no_activity')}
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -192,7 +189,7 @@ export const CalendarView: React.FC = () => {
                       className="flex items-center space-x-1 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-indigo-500/30 transition-all"
                     >
                       <ImageIcon className="w-3.5 h-3.5 text-indigo-400" />
-                      <span>Фото</span>
+                      <span>{t('calendar_photo_btn')}</span>
                     </button>
                   )}
                 </div>
