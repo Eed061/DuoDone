@@ -1,0 +1,16 @@
+{
+  "name": "DuoDone — Домашні справи та лічильники для пар",
+  "short_name": "DuoDone",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090d16",
+  "theme_color": "#090d16",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
