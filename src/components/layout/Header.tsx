@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { translateEntityTitle } from '../../i18n/translations';
 import { Users, Edit3 } from 'lucide-react';
 import { EditUserModal } from './EditUserModal';
 
 export const Header: React.FC = () => {
-  const { household, activeUser, partnerUser } = useApp();
+  const { household, activeUser, partnerUser, language } = useApp();
   const [showEditModal, setShowEditModal] = useState(false);
 
   return (
@@ -25,14 +26,14 @@ export const Header: React.FC = () => {
               </div>
               <p className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
                 <Users className="w-3 h-3 text-indigo-400" />
-                {household.name || 'Наш дім'}
+                {translateEntityTitle(household.name || 'Наш дім', language)}
               </p>
             </div>
           </div>
 
-          {/* Right: Non-clickable Pair Status Display (Active User bold + green online dot, Partner secondary) */}
+          {/* Right: Non-clickable Pair Status Display */}
           <div className="flex items-center space-x-2 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800 shadow-inner">
-            {/* Active User (Bold + Green Online Dot) */}
+            {/* Active User */}
             <div className="flex items-center space-x-1.5">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -44,13 +45,13 @@ export const Header: React.FC = () => {
                 className="w-5 h-5 rounded-full object-cover border border-emerald-400/60"
               />
               <span className="font-black text-white text-xs tracking-tight">
-                {activeUser.first_name}
+                {translateEntityTitle(activeUser.first_name, language)}
               </span>
             </div>
 
             <span className="text-slate-600 text-xs font-light">|</span>
 
-            {/* Partner User (Clean secondary) */}
+            {/* Partner User */}
             <div className="flex items-center space-x-1">
               <img
                 src={partnerUser.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg?seed=Partner'}
@@ -58,7 +59,7 @@ export const Header: React.FC = () => {
                 className="w-4 h-4 rounded-full object-cover opacity-80"
               />
               <span className="font-semibold text-slate-400 text-xs">
-                {partnerUser.first_name}
+                {translateEntityTitle(partnerUser.first_name, language)}
               </span>
             </div>
 
@@ -66,7 +67,6 @@ export const Header: React.FC = () => {
             <button
               onClick={() => setShowEditModal(true)}
               className="p-1 text-slate-400 hover:text-indigo-300 rounded-lg hover:bg-slate-800 transition-colors ml-1"
-              title="Налаштування імен та фото"
             >
               <Edit3 className="w-3.5 h-3.5" />
             </button>

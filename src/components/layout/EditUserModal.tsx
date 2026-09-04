@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, Check, Edit3, Camera, User as UserIcon, Loader2, Smartphone, ShieldCheck } from 'lucide-react';
+import { translateEntityTitle } from '../../i18n/translations';
+import { X, Check, Edit3, Camera, Loader2, Smartphone, ShieldCheck } from 'lucide-react';
 import { compressImageFile } from '../../services/imageCompression';
 import { getTelegramUser } from '../../services/telegram';
 
@@ -9,7 +10,7 @@ interface EditUserModalProps {
 }
 
 export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
-  const { users, updateUser, activeUser, switchActiveUser } = useApp();
+  const { users, updateUser, activeUser, switchActiveUser, language, t } = useApp();
   const tgUser = getTelegramUser();
 
   const user1 = users[0] || { id: 'u1', first_name: 'Партнер 1' };
@@ -78,8 +79,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
             <Edit3 className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-extrabold text-white text-base">Імена та Фото Партнерів</h3>
-            <p className="text-xs text-slate-400">Вкажіть власні імена та аватарки</p>
+            <h3 className="font-extrabold text-white text-base">{t('edit_names_title')}</h3>
+            <p className="text-xs text-slate-400">{t('edit_names_subtitle')}</p>
           </div>
         </div>
 
@@ -87,7 +88,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
         <div className="bg-slate-950 p-3 rounded-xl border border-slate-700/80 space-y-2">
           <label className="text-[11px] font-bold text-slate-300 flex items-center gap-1">
             <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Хто ви на цьому пристрої:</span>
+            <span>{t('who_are_you')}</span>
           </label>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -100,7 +101,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
               }`}
             >
               <span>👨</span>
-              <span className="truncate">{name1 || 'Партнер 1'}</span>
+              <span className="truncate">
+                {translateEntityTitle(name1 || 'Партнер 1', language)}
+              </span>
             </button>
             <button
               type="button"
@@ -112,7 +115,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
               }`}
             >
               <span>👩</span>
-              <span className="truncate">{name2 || 'Партнер 2'}</span>
+              <span className="truncate">
+                {translateEntityTitle(name2 || 'Партнер 2', language)}
+              </span>
             </button>
           </div>
         </div>
@@ -121,8 +126,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
           {/* Partner 1 */}
           <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50 space-y-2.5">
             <label className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider flex items-center justify-between">
-              <span className="flex items-center gap-1">👨 Партнер 1</span>
-              <span className="text-[10px] text-slate-400 font-normal">Фото та Ім'я</span>
+              <span className="flex items-center gap-1">{t('partner_1_label')}</span>
+              <span className="text-[10px] text-slate-400 font-normal">{t('eum_photo_name')}</span>
             </label>
 
             <div className="flex items-center space-x-3">
@@ -136,7 +141,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
                   type="button"
                   onClick={() => fileInputRef1.current?.click()}
                   className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-white opacity-90 group-hover:opacity-100 transition-opacity"
-                  title="Змінити фото"
+                  title={t('eum_change_photo')}
                 >
                   {uploading1 ? <Loader2 className="w-4 h-4 animate-spin text-indigo-400" /> : <Camera className="w-4 h-4" />}
                 </button>
@@ -152,15 +157,15 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
                 />
                 <input
                   type="text"
-                  value={name1}
+                  value={translateEntityTitle(name1, language)}
                   onChange={(e) => setName1(e.target.value)}
-                  placeholder="Ім'я партнера 1"
+                  placeholder={t('eum_partner1_ph')}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                   required
                 />
                 <div className="flex items-center space-x-1 text-[10px] text-slate-400 pt-0.5">
                   <ShieldCheck className="w-3 h-3 text-indigo-400" />
-                  <span>TG ID: {user1.telegram_id || 'Прив’язано під час входу'}</span>
+                  <span>TG ID: {user1.telegram_id || t('tg_id_bound')}</span>
                 </div>
               </div>
             </div>
@@ -169,8 +174,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
           {/* Partner 2 */}
           <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50 space-y-2.5">
             <label className="text-[11px] font-bold text-pink-400 uppercase tracking-wider flex items-center justify-between">
-              <span className="flex items-center gap-1">👩 Партнер 2</span>
-              <span className="text-[10px] text-slate-400 font-normal">Фото та Ім'я</span>
+              <span className="flex items-center gap-1">{t('partner_2_label')}</span>
+              <span className="text-[10px] text-slate-400 font-normal">{t('eum_photo_name')}</span>
             </label>
 
             <div className="flex items-center space-x-3">
@@ -184,7 +189,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
                   type="button"
                   onClick={() => fileInputRef2.current?.click()}
                   className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-white opacity-90 group-hover:opacity-100 transition-opacity"
-                  title="Змінити фото"
+                  title={t('eum_change_photo')}
                 >
                   {uploading2 ? <Loader2 className="w-4 h-4 animate-spin text-pink-400" /> : <Camera className="w-4 h-4" />}
                 </button>
@@ -200,15 +205,15 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
                 />
                 <input
                   type="text"
-                  value={name2}
+                  value={translateEntityTitle(name2, language)}
                   onChange={(e) => setName2(e.target.value)}
-                  placeholder="Ім'я партнера 2"
+                  placeholder={t('eum_partner2_ph')}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                   required
                 />
                 <div className="flex items-center space-x-1 text-[10px] text-slate-400 pt-0.5">
                   <ShieldCheck className="w-3 h-3 text-pink-400" />
-                  <span>TG ID: {user2.telegram_id || 'Прив’язано при прийнятті запрошення'}</span>
+                  <span>TG ID: {user2.telegram_id || t('tg_id_invite')}</span>
                 </div>
               </div>
             </div>
@@ -220,7 +225,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
               onClick={onClose}
               className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs"
             >
-              Скасувати
+              {t('cancel')}
             </button>
             <button
               type="submit"
@@ -228,7 +233,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
               className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold text-xs flex items-center justify-center space-x-1 shadow-lg shadow-indigo-500/25 disabled:opacity-50"
             >
               <Check className="w-4 h-4" />
-              <span>Зберегти зміни</span>
+              <span>{t('save_changes')}</span>
             </button>
           </div>
         </form>
