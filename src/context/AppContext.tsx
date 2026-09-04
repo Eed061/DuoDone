@@ -40,17 +40,36 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [rouletteItems, setRouletteItems] = useState<RouletteItem[]>([]);
 
   const loadAllData = () => {
-    const storedUsers = storage.getUsers();
-    const telegramUser = getTelegramUser();
+    let storedUsers = storage.getUsers();
 
-    if (telegramUser && storedUsers.length > 0) {
-      storedUsers[0].first_name = telegramUser.first_name;
-      if (telegramUser.photo_url) {
-        storedUsers[0].avatar_url = telegramUser.photo_url;
+    // Check URL parameters and Telegram WebApp start_param
+    const urlParams = new URLSearchParams(window.location.search);
+    const inviteParam = urlParams.get('invite') || urlParams.get('start');
+    const tgStartParam = (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param;
+    const fullStart = inviteParam || tgStartParam || '';
+
+    // Handle invite parameter if joining via link
+    if (fullStart) {
+      const u1Name = urlParams.get('u1');
+      const u2Name = urlParams.get('u2');
+
+      if (u1Name && storedUsers[0]) {
+        storedUsers[0].first_name = u1Name;
+      }
+      if (u2Name && storedUsers[1]) {
+        storedUsers[1].first_name = u2Name;
+      }
+
+      if (storedUsers[0]) storage.updateUser(storedUsers[0].id, storedUsers[0]);
+      if (storedUsers[1]) storage.updateUser(storedUsers[1].id, storedUsers[1]);
+
+      // If joining via partner link, switch active user on this device to Partner 2
+      if (storedUsers[1] && (!localStorage.getItem('duodone_active_user_id') || fullStart.includes('join'))) {
+        storage.setActiveUserId(storedUsers[1].id);
       }
     }
 
-    setUsers(storedUsers);
+    setUsers(storage.getUsers());
     setActiveUserId(storage.getActiveUserId());
     setHousehold(storage.getHousehold());
     setTasks(storage.getTasks());

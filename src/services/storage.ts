@@ -14,15 +14,15 @@ const STORAGE_KEYS = {
 const defaultUsers: User[] = [
   {
     id: 'user-he-101',
-    first_name: 'Дмитро',
-    role_title: 'Він',
+    first_name: 'Партнер 1',
+    role_title: 'Партнер 1',
     avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Dmitry&backgroundColor=b6e3f4',
     created_at: new Date().toISOString(),
   },
   {
     id: 'user-she-102',
-    first_name: 'Олена',
-    role_title: 'Вона',
+    first_name: 'Партнер 2',
+    role_title: 'Партнер 2',
     avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Elena&backgroundColor=ffdfbf',
     created_at: new Date().toISOString(),
   },

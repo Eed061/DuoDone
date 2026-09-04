@@ -12,7 +12,11 @@ export const HouseholdShareModal: React.FC = () => {
   const [showFactoryConfirm, setShowFactoryConfirm] = useState(false);
   const [showResetCycleConfirm, setShowResetCycleConfirm] = useState(false);
 
-  const inviteLink = `https://t.me/DuoDone_bot?start=join_${household.invite_code || 'DUO7789'}`;
+  const user1Name = users[0]?.first_name || 'Партнер 1';
+  const user2Name = users[1]?.first_name || 'Партнер 2';
+  const inviteCode = household.invite_code || 'DUO7789';
+
+  const inviteLink = `https://duodone-one.vercel.app/?invite=${inviteCode}&u1=${encodeURIComponent(user1Name)}&u2=${encodeURIComponent(user2Name)}`;
 
   const copyLink = () => {
     navigator.clipboard.writeText(inviteLink);
@@ -52,10 +56,10 @@ export const HouseholdShareModal: React.FC = () => {
         {/* Rename Partners Section */}
         <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 flex items-center justify-between">
           <div>
-            <h4 className="text-xs font-bold text-slate-200">Партнери та їх фото</h4>
+            <h4 className="text-xs font-bold text-slate-200">Партнери у застосунку</h4>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              <span className="font-semibold text-indigo-300">{users[0]?.first_name || 'Він'}</span> та{' '}
-              <span className="font-semibold text-pink-300">{users[1]?.first_name || 'Вона'}</span>
+              <span className="font-semibold text-indigo-300">{user1Name}</span> та{' '}
+              <span className="font-semibold text-pink-300">{user2Name}</span>
             </p>
           </div>
           <button
@@ -170,12 +174,12 @@ export const HouseholdShareModal: React.FC = () => {
               Запрошення партнера
             </span>
             <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-md font-mono font-bold">
-              Код: {household.invite_code || 'DUO7789'}
+              Код: {inviteCode}
             </span>
           </div>
 
           <p className="text-xs text-slate-300">
-            Надішліть це посилання партнеру для синхронізації в одному спільному «Домі».
+            Надішліть це посилання партнеру: у нього автоматично відкриються встановлені імена (<span className="text-indigo-300 font-semibold">{user1Name}</span> та <span className="text-pink-300 font-semibold">{user2Name}</span>).
           </p>
 
           <div className="flex space-x-2">
