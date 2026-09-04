@@ -180,9 +180,18 @@ export const RouletteWheel: React.FC = () => {
     const winningIndex = Math.floor(Math.random() * numSectors);
     const anglePerSector = 360 / numSectors;
 
-    const targetSectorAngle = 360 - winningIndex * anglePerSector - anglePerSector / 2;
-    const extraTurns = 360 * 6; // 6 full spins
-    const totalNewRotation = rotation + extraTurns + (targetSectorAngle - (rotation % 360));
+    // Center angle of winning sector in standard canvas coords (0° is 3 o'clock)
+    const centerAngleOfSector = winningIndex * anglePerSector + anglePerSector / 2;
+    // Top pointer is located at 12 o'clock (270°)
+    let targetRotation = 270 - centerAngleOfSector;
+
+    // Calculate rotation delta from current rotation
+    const currentRotationMod = rotation % 360;
+    let delta = (targetRotation - currentRotationMod) % 360;
+    if (delta < 0) delta += 360;
+
+    const extraSpins = 360 * 6; // 6 full turns
+    const totalNewRotation = rotation + extraSpins + delta;
 
     setRotation(totalNewRotation);
 
