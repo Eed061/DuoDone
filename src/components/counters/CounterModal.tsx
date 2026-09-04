@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Camera, X, Check, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Camera, X, Check, Loader2 } from 'lucide-react';
 import { compressImageFile } from '../../services/imageCompression';
+import { useApp } from '../../context/AppContext';
+import { translateEntityTitle } from '../../i18n/translations';
 
 interface CounterModalProps {
   title: string;
@@ -17,6 +19,7 @@ export const CounterModal: React.FC<CounterModalProps> = ({
   onConfirm,
   onClose,
 }) => {
+  const { language, t } = useApp();
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -31,7 +34,6 @@ export const CounterModal: React.FC<CounterModalProps> = ({
       setPhotoUrl(compressedDataUrl);
     } catch (err) {
       console.error('Failed to compress image:', err);
-      alert('Помилка при обробці зображення');
     } finally {
       setIsCompressing(false);
     }
@@ -39,7 +41,6 @@ export const CounterModal: React.FC<CounterModalProps> = ({
 
   const handleSubmit = () => {
     if (photoRequired && !photoUrl) {
-      alert('Для цього завдання фотофіксація є обов’язковою!');
       return;
     }
     onConfirm(photoUrl);
@@ -61,11 +62,13 @@ export const CounterModal: React.FC<CounterModalProps> = ({
           <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 mx-auto flex items-center justify-center text-3xl mb-2 shadow-inner">
             {icon}
           </div>
-          <h3 className="font-bold text-white text-lg tracking-tight">{title}</h3>
+          <h3 className="font-bold text-white text-lg tracking-tight">
+            {translateEntityTitle(title, language)}
+          </h3>
           <p className="text-xs text-slate-400">
             {photoRequired
-              ? 'Обов’язкова фотофіксація перед зарахуванням'
-              : 'Додайте фотофіксацію за бажанням'}
+              ? t('cm_photo_req_desc')
+              : t('cm_photo_opt_desc')}
           </p>
         </div>
 
@@ -86,12 +89,11 @@ export const CounterModal: React.FC<CounterModalProps> = ({
               <button
                 onClick={() => setPhotoUrl(null)}
                 className="absolute top-2 right-2 bg-slate-900/80 text-white p-1.5 rounded-full hover:bg-slate-900"
-                title="Видалити фото"
               >
                 <X className="w-4 h-4" />
               </button>
               <span className="absolute bottom-2 left-2 bg-emerald-500/90 text-slate-950 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
-                <Check className="w-3 h-3" /> Оброблено WebP
+                <Check className="w-3 h-3" /> {t('cm_processed_webp')}
               </span>
             </div>
           ) : (
@@ -103,7 +105,7 @@ export const CounterModal: React.FC<CounterModalProps> = ({
               {isCompressing ? (
                 <div className="flex flex-col items-center text-indigo-400">
                   <Loader2 className="w-8 h-8 animate-spin mb-2" />
-                  <span className="text-xs font-semibold">Стиснення фото...</span>
+                  <span className="text-xs font-semibold">{t('cm_compressing')}</span>
                 </div>
               ) : (
                 <div className="flex flex-col items-center text-slate-400 group hover:text-indigo-300">
@@ -111,9 +113,9 @@ export const CounterModal: React.FC<CounterModalProps> = ({
                     <Camera className="w-6 h-6 text-indigo-400" />
                   </div>
                   <span className="text-xs font-bold text-slate-200">
-                    {photoRequired ? 'Зробити знімок камери' : 'Зробити фото підтвердження'}
+                    {photoRequired ? t('cm_take_photo_req') : t('cm_take_photo_opt')}
                   </span>
-                  <span className="text-[10px] text-slate-500 mt-0.5">Тільки жива зйомка з пристрою</span>
+                  <span className="text-[10px] text-slate-500 mt-0.5">{t('cm_live_only')}</span>
                 </div>
               )}
             </button>
@@ -126,7 +128,7 @@ export const CounterModal: React.FC<CounterModalProps> = ({
             onClick={onClose}
             className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm"
           >
-            Скасувати
+            {t('cancel')}
           </button>
           <button
             onClick={handleSubmit}
@@ -138,7 +140,7 @@ export const CounterModal: React.FC<CounterModalProps> = ({
             }`}
           >
             <Check className="w-4 h-4" />
-            <span>Підтвердити</span>
+            <span>{t('cm_confirm')}</span>
           </button>
         </div>
       </div>

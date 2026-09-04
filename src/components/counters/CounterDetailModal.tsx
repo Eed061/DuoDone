@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Task, Counter } from '../../types';
 import { useApp } from '../../context/AppContext';
-import { X, Calendar, Clock, User as UserIcon, Image as ImageIcon } from 'lucide-react';
+import { translateEntityTitle, MONTH_NAMES } from '../../i18n/translations';
+import { X, Clock, Image as ImageIcon } from 'lucide-react';
 
 interface CounterDetailModalProps {
   entity: Task | Counter;
@@ -14,7 +15,7 @@ export const CounterDetailModal: React.FC<CounterDetailModalProps> = ({
   entityType,
   onClose,
 }) => {
-  const { activityLogs, users } = useApp();
+  const { activityLogs, users, language, t } = useApp();
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   // Filter activity logs for this entity
@@ -34,14 +35,11 @@ export const CounterDetailModal: React.FC<CounterDetailModalProps> = ({
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     const day = d.getDate();
-    const months = [
-      'січ', 'лют', 'берез', 'квіт', 'трав', 'черв',
-      'лип', 'серп', 'верес', 'жовт', 'листоп', 'груд'
-    ];
-    const month = months[d.getMonth()];
+    const months = MONTH_NAMES[language] || MONTH_NAMES.uk;
+    const month = months[d.getMonth()]?.substring(0, 3).toLowerCase() || '';
     const hours = d.getHours().toString().padStart(2, '0');
     const mins = d.getMinutes().toString().padStart(2, '0');
-    return `${day} ${month} о ${hours}:${mins}`;
+    return `${day} ${month} ${hours}:${mins}`;
   };
 
   return (
@@ -54,9 +52,11 @@ export const CounterDetailModal: React.FC<CounterDetailModalProps> = ({
               {entity.icon}
             </div>
             <div>
-              <h3 className="font-bold text-white text-base leading-tight">{entity.title}</h3>
+              <h3 className="font-bold text-white text-base leading-tight">
+                {translateEntityTitle(entity.title, language)}
+              </h3>
               <p className="text-xs text-slate-400">
-                {entityType === 'duodone_task' ? 'Завдання DuoDone' : 'Лічильник'}
+                {entityType === 'duodone_task' ? t('cdm_duodone_task') : t('cdm_counter')}
               </p>
             </div>
           </div>
@@ -73,7 +73,7 @@ export const CounterDetailModal: React.FC<CounterDetailModalProps> = ({
           {/* Breakdown Stats */}
           <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/50">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-              Всього дій: {logs.length}
+              {t('cdm_total_actions', { count: logs.length })}
             </h4>
             <div className="grid grid-cols-2 gap-2">
               {userStats.map((stat) => (
@@ -89,7 +89,9 @@ export const CounterDetailModal: React.FC<CounterDetailModalProps> = ({
                     />
                     <span className="text-xs text-slate-300 font-medium">{stat.user.first_name}</span>
                   </div>
-                  <span className="text-xs font-bold text-indigo-400">{stat.count} рази</span>
+                  <span className="text-xs font-bold text-indigo-400">
+                    {t('cdm_times', { count: stat.count })}
+                  </span>
                 </div>
               ))}
             </div>
@@ -99,12 +101,12 @@ export const CounterDetailModal: React.FC<CounterDetailModalProps> = ({
           <div>
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-indigo-400" />
-              Хронологія дій ({logs.length})
+              {t('cdm_timeline', { count: logs.length })}
             </h4>
 
             {logs.length === 0 ? (
               <div className="text-center py-6 text-slate-500 text-xs font-medium bg-slate-900/40 rounded-xl">
-                Історія пока порожня. Зробіть першу дію!
+                {t('cdm_empty')}
               </div>
             ) : (
               <div className="space-y-2">
@@ -133,7 +135,7 @@ export const CounterDetailModal: React.FC<CounterDetailModalProps> = ({
                           className="flex items-center space-x-1 bg-slate-700/60 hover:bg-slate-700 text-indigo-300 text-xs font-medium px-2 py-1 rounded-lg border border-slate-600/40"
                         >
                           <ImageIcon className="w-3 h-3 text-indigo-400" />
-                          <span>Фото</span>
+                          <span>{t('calendar_photo_btn')}</span>
                         </button>
                       )}
                     </div>

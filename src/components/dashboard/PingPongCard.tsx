@@ -2,6 +2,7 @@ import React from 'react';
 import { Task } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { Clock, Camera, CheckCircle2, Lock } from 'lucide-react';
+import { translateEntityTitle } from '../../i18n/translations';
 
 interface PingPongCardProps {
   task: Task;
@@ -10,20 +11,22 @@ interface PingPongCardProps {
 }
 
 export const PingPongCard: React.FC<PingPongCardProps> = ({ task, onActionRequest, onOpenDetails }) => {
-  const { users, activeUser } = useApp();
+  const { users, activeUser, language, t } = useApp();
 
   const turnUser = users.find((u) => u.id === task.current_turn_user_id) || users[0];
   const isMyTurn = activeUser.id === task.current_turn_user_id;
 
+  const translatedTitle = translateEntityTitle(task.title, language);
+
   // Calculate elapsed time since last action
   const formatTimeWaiting = (timestamp?: string) => {
-    if (!timestamp) return 'Очікує виконання';
+    if (!timestamp) return '...';
     const diffMs = Date.now() - new Date(timestamp).getTime();
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
-    if (hours < 1) return 'Менше години тому';
-    if (hours < 24) return `Висить ${hours} год`;
+    if (hours < 1) return '< 1h';
+    if (hours < 24) return `${hours}h`;
     const days = Math.floor(hours / 24);
-    return `Висить ${days} дн`;
+    return `${days}d`;
   };
 
   const handleButtonClick = () => {
@@ -42,7 +45,7 @@ export const PingPongCard: React.FC<PingPongCardProps> = ({ task, onActionReques
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <h4 className="font-bold text-white text-base tracking-tight">{task.title}</h4>
+              <h4 className="font-bold text-white text-base tracking-tight">{translatedTitle}</h4>
               <span className="bg-amber-500/10 text-amber-300 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border border-amber-500/20">
                 +{task.xp_points} XP
               </span>
@@ -68,11 +71,11 @@ export const PingPongCard: React.FC<PingPongCardProps> = ({ task, onActionReques
               alt={turnUser.first_name}
               className="w-4 h-4 rounded-full"
             />
-            <span>{isMyTurn ? 'Твоя черга! 🏓' : turnUser.first_name}</span>
+            <span>{isMyTurn ? t('task_your_turn') : turnUser.first_name}</span>
           </div>
           {task.photo_required && (
             <span className="text-[10px] text-pink-400 font-medium flex items-center gap-0.5 mt-1">
-              <Camera className="w-2.5 h-2.5" /> Фотофіксація
+              <Camera className="w-2.5 h-2.5" /> Photo
             </span>
           )}
         </div>
@@ -92,12 +95,12 @@ export const PingPongCard: React.FC<PingPongCardProps> = ({ task, onActionReques
           {isMyTurn ? (
             <>
               {task.photo_required ? <Camera className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-              <span>Зроблено! Передати хід 🏓</span>
+              <span>{t('task_done_btn')}</span>
             </>
           ) : (
             <>
               <Lock className="w-3.5 h-3.5 text-slate-500" />
-              <span>Зараз хід партнера ({turnUser.first_name})</span>
+              <span>{t('task_partner_turn')} ({turnUser.first_name})</span>
             </>
           )}
         </button>

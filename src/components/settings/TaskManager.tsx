@@ -1,33 +1,34 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Task, Counter, PhotoMode } from '../../types';
-import { Plus, Trash2, Eye, EyeOff, Edit3, Check, X } from 'lucide-react';
-
-const EMOJI_CATEGORIES = [
-  {
-    name: '🧹 Побут',
-    emojis: ['🧽', '🗑️', '🧹', '🚽', '🪟', '🧺', '🛁', '🪠', '🧼', '🧯', '🧦', '👗', '👔', '🛏️', '🛋️', '🔑'],
-  },
-  {
-    name: '🍳 Їжа та Кухня',
-    emojis: ['🍳', '🥣', '☕', '🥂', '🛒', '🍲', '🍕', '🥐', '🍏', '🍇', '🍰', '🍣', '🍷', '🍺', '🥤', '🍼'],
-  },
-  {
-    name: '🪴 Тварини та Дім',
-    emojis: ['🪴', '🐈', '🐕', '🐱', '🐶', '🦜', '🐠', '🌱', '💐', '🌻', '🌸', '🌵', '🐾'],
-  },
-  {
-    name: '🚗 Авто та Техніка',
-    emojis: ['🚗', '🔧', '🪛', '🔨', '⚡', '📦', '💻', '📱', '🎮', '🚲', '⛽', '🛵'],
-  },
-  {
-    name: '💖 Романтика та Дозвілля',
-    emojis: ['💖', '❤️', '👩‍❤️‍👨', '💍', '🎁', '🏖️', '🎬', '🍿', '🏋️‍♀️', '🧘‍♂️', '💊', '💅', '🎉'],
-  },
-];
+import { translateEntityTitle } from '../../i18n/translations';
+import { Plus, Trash2, Eye, EyeOff, Edit3, X } from 'lucide-react';
 
 export const TaskManager: React.FC = () => {
-  const { tasks, counters, saveTask, deleteTask, saveCounter, deleteCounter, activeUser, household } = useApp();
+  const { tasks, counters, saveTask, deleteTask, saveCounter, deleteCounter, activeUser, household, language, t } = useApp();
+
+  const EMOJI_CATEGORIES = [
+    {
+      key: 'cat_household',
+      emojis: ['🧽', '🗑️', '🧹', '🚽', '🪟', '🧺', '🛁', '🪠', '🧼', '🧯', '🧦', '👗', '👔', '🛏️', '🛋️', '🔑'],
+    },
+    {
+      key: 'cat_food',
+      emojis: ['🍳', '🥣', '☕', '🥂', '🛒', '🍲', '🍕', '🥐', '🍏', '🍇', '🍰', '🍣', '🍷', '🍺', '🥤', '🍼'],
+    },
+    {
+      key: 'cat_home_pets',
+      emojis: ['🪴', '🐈', '🐕', '🐱', '🐶', '🦜', '🐠', '🌱', '💐', '🌻', '🌸', '🌵', '🐾'],
+    },
+    {
+      key: 'cat_auto',
+      emojis: ['🚗', '🔧', '🪛', '🔨', '⚡', '📦', '💻', '📱', '🎮', '🚲', '⛽', '🛵'],
+    },
+    {
+      key: 'cat_romance',
+      emojis: ['💖', '❤️', '👩‍❤️‍👨', '💍', '🎁', '🏖️', '🎬', '🍿', '🏋️‍♀️', '🧘‍♂️', '💊', '💅', '🎉'],
+    },
+  ];
 
   const [activeSubTab, setActiveSubTab] = useState<'tasks' | 'counters'>('tasks');
   const [showForm, setShowForm] = useState(false);
@@ -170,7 +171,7 @@ export const TaskManager: React.FC = () => {
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            DuoDone Завдання ({tasks.length})
+            {t('tm_tasks_tab', { count: tasks.length })}
           </button>
           <button
             onClick={() => { setActiveSubTab('counters'); setShowForm(false); setEditingCounter(null); }}
@@ -180,7 +181,7 @@ export const TaskManager: React.FC = () => {
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Лічильники ({counters.length})
+            {t('tm_counters_tab', { count: counters.length })}
           </button>
         </div>
 
@@ -192,7 +193,7 @@ export const TaskManager: React.FC = () => {
           className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center space-x-1 shadow-md"
         >
           <Plus className="w-4 h-4" />
-          <span>Створити</span>
+          <span>{t('create_btn')}</span>
         </button>
       </div>
 
@@ -208,17 +209,17 @@ export const TaskManager: React.FC = () => {
 
           <h4 className="text-xs font-extrabold text-indigo-400 uppercase tracking-wider">
             {activeSubTab === 'tasks'
-              ? editingTask ? 'Редагувати DuoDone Завдання' : 'Створити нове DuoDone Завдання'
-              : editingCounter ? 'Редагувати Лічильник' : 'Створити новий Лічильник'}
+              ? editingTask ? t('tm_edit_task') : t('tm_create_task')
+              : editingCounter ? t('tm_edit_counter') : t('tm_create_counter')}
           </h4>
 
           {activeSubTab === 'tasks' ? (
             <form onSubmit={handleSaveTask} className="space-y-3">
               <div>
-                <label className="text-[11px] font-semibold text-slate-300">Назва завдання</label>
+                <label className="text-[11px] font-semibold text-slate-300">{t('tm_task_title_label')}</label>
                 <input
                   type="text"
-                  placeholder="Наприклад: Помити підлогу"
+                  placeholder={t('tm_task_title_ph')}
                   value={taskTitle}
                   onChange={(e) => setTaskTitle(e.target.value)}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 mt-1 focus:border-indigo-500 focus:outline-none"
@@ -226,12 +227,12 @@ export const TaskManager: React.FC = () => {
                 />
               </div>
 
-              {/* Emoji picker with categories and Android keyboard input */}
+              {/* Emoji picker */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-semibold text-slate-300">Вибір емодзі</label>
+                  <label className="text-[11px] font-semibold text-slate-300">{t('tm_emoji_label')}</label>
                   <span className="text-[10px] text-indigo-400 font-bold bg-slate-800 px-2 py-0.5 rounded-md">
-                    Обрано: {taskIcon}
+                    {t('tm_selected', { icon: taskIcon })}
                   </span>
                 </div>
 
@@ -240,7 +241,7 @@ export const TaskManager: React.FC = () => {
                     type="text"
                     value={taskIcon}
                     onChange={(e) => setTaskIcon(e.target.value)}
-                    placeholder="Введіть будь-який емодзі з клавіатури Android..."
+                    placeholder={t('tm_emoji_ph')}
                     className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-center text-white focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
@@ -248,7 +249,7 @@ export const TaskManager: React.FC = () => {
                 <div className="flex space-x-1 overflow-x-auto py-1 border-t border-b border-slate-800">
                   {EMOJI_CATEGORIES.map((cat, idx) => (
                     <button
-                      key={cat.name}
+                      key={cat.key}
                       type="button"
                       onClick={() => setActiveCategoryIdx(idx)}
                       className={`text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap transition-colors ${
@@ -257,7 +258,7 @@ export const TaskManager: React.FC = () => {
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      {cat.name}
+                      {t(cat.key)}
                     </button>
                   ))}
                 </div>
@@ -282,7 +283,7 @@ export const TaskManager: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-300">Вартість XP (1 - 5)</label>
+                  <label className="text-[11px] font-semibold text-slate-300">{t('tm_xp_cost')}</label>
                   <select
                     value={taskXp}
                     onChange={(e) => setTaskXp(Number(e.target.value))}
@@ -303,7 +304,7 @@ export const TaskManager: React.FC = () => {
                     className="w-4 h-4 rounded text-indigo-600 bg-slate-800 border-slate-700"
                   />
                   <label htmlFor="photoReq" className="text-xs text-slate-300 font-semibold cursor-pointer">
-                    Обов’язкове фото
+                    {t('tm_photo_req')}
                   </label>
                 </div>
               </div>
@@ -314,23 +315,23 @@ export const TaskManager: React.FC = () => {
                   onClick={() => { setShowForm(false); setEditingTask(null); }}
                   className="flex-1 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs"
                 >
-                  Скасувати
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg"
                 >
-                  {editingTask ? 'Зберегти зміни' : 'Створити завдання'}
+                  {editingTask ? t('tm_save_changes') : t('tm_create_task_btn')}
                 </button>
               </div>
             </form>
           ) : (
             <form onSubmit={handleSaveCounter} className="space-y-3">
               <div>
-                <label className="text-[11px] font-semibold text-slate-300">Назва лічильника</label>
+                <label className="text-[11px] font-semibold text-slate-300">{t('tm_counter_title_label')}</label>
                 <input
                   type="text"
-                  placeholder="Наприклад: Купівля корму коту"
+                  placeholder={t('tm_counter_title_ph')}
                   value={counterTitle}
                   onChange={(e) => setCounterTitle(e.target.value)}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 mt-1 focus:border-indigo-500 focus:outline-none"
@@ -338,12 +339,12 @@ export const TaskManager: React.FC = () => {
                 />
               </div>
 
-              {/* Emoji picker for Counter */}
+              {/* Emoji picker */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-semibold text-slate-300">Вибір емодзі</label>
+                  <label className="text-[11px] font-semibold text-slate-300">{t('tm_emoji_label')}</label>
                   <span className="text-[10px] text-indigo-400 font-bold bg-slate-800 px-2 py-0.5 rounded-md">
-                    Обрано: {counterIcon}
+                    {t('tm_selected', { icon: counterIcon })}
                   </span>
                 </div>
 
@@ -352,7 +353,7 @@ export const TaskManager: React.FC = () => {
                     type="text"
                     value={counterIcon}
                     onChange={(e) => setCounterIcon(e.target.value)}
-                    placeholder="Введіть будь-який емодзі з клавіатури Android..."
+                    placeholder={t('tm_emoji_ph')}
                     className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-center text-white focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
@@ -360,7 +361,7 @@ export const TaskManager: React.FC = () => {
                 <div className="flex space-x-1 overflow-x-auto py-1 border-t border-b border-slate-800">
                   {EMOJI_CATEGORIES.map((cat, idx) => (
                     <button
-                      key={cat.name}
+                      key={cat.key}
                       type="button"
                       onClick={() => setActiveCategoryIdx(idx)}
                       className={`text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap transition-colors ${
@@ -369,7 +370,7 @@ export const TaskManager: React.FC = () => {
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      {cat.name}
+                      {t(cat.key)}
                     </button>
                   ))}
                 </div>
@@ -394,20 +395,20 @@ export const TaskManager: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-300">Режим фото підтвердження</label>
+                  <label className="text-[11px] font-semibold text-slate-300">{t('tm_photo_mode_label')}</label>
                   <select
                     value={counterPhotoMode}
                     onChange={(e) => setCounterPhotoMode(e.target.value as PhotoMode)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white mt-1 focus:border-indigo-500 focus:outline-none"
                   >
-                    <option value="none">Без фото</option>
-                    <option value="optional">За бажанням</option>
-                    <option value="required">Обов’язково</option>
+                    <option value="none">{t('tm_photo_none')}</option>
+                    <option value="optional">{t('tm_photo_optional')}</option>
+                    <option value="required">{t('tm_photo_required')}</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-300">Крок підрахунку</label>
+                  <label className="text-[11px] font-semibold text-slate-300">{t('tm_counter_step')}</label>
                   <input
                     type="number"
                     min="1"
@@ -424,13 +425,13 @@ export const TaskManager: React.FC = () => {
                   onClick={() => { setShowForm(false); setEditingCounter(null); }}
                   className="flex-1 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs"
                 >
-                  Скасувати
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg"
                 >
-                  {editingCounter ? 'Зберегти зміни' : 'Створити лічильник'}
+                  {editingCounter ? t('tm_save_changes') : t('tm_create_counter_btn')}
                 </button>
               </div>
             </form>
@@ -438,7 +439,7 @@ export const TaskManager: React.FC = () => {
         </div>
       )}
 
-      {/* List items with Edit, Show/Hide, and Delete buttons */}
+      {/* List items */}
       <div className="space-y-2">
         {activeSubTab === 'tasks' ? (
           tasks.map((task) => (
@@ -449,7 +450,9 @@ export const TaskManager: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <span className="text-xl">{task.icon}</span>
                 <div>
-                  <h5 className="font-bold text-xs text-slate-200">{task.title}</h5>
+                  <h5 className="font-bold text-xs text-slate-200">
+                    {translateEntityTitle(task.title, language)}
+                  </h5>
                   <span className="text-[10px] text-amber-400 font-semibold">{task.xp_points} XP</span>
                 </div>
               </div>
@@ -458,7 +461,6 @@ export const TaskManager: React.FC = () => {
                 <button
                   onClick={() => openEditTask(task)}
                   className="p-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
-                  title="Редагувати завдання"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                 </button>
@@ -470,7 +472,6 @@ export const TaskManager: React.FC = () => {
                       ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
                       : 'bg-slate-800 text-slate-500 border-slate-700'
                   }`}
-                  title={task.show_on_dashboard ? 'Сховати з головного екрана' : 'Показати на головному екрані'}
                 >
                   {task.show_on_dashboard ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                 </button>
@@ -478,7 +479,6 @@ export const TaskManager: React.FC = () => {
                 <button
                   onClick={() => deleteTask(task.id)}
                   className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800"
-                  title="Видалити"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -494,8 +494,12 @@ export const TaskManager: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <span className="text-xl">{counter.icon}</span>
                 <div>
-                  <h5 className="font-bold text-xs text-slate-200">{counter.title}</h5>
-                  <span className="text-[10px] text-indigo-400 font-semibold">Всього: {counter.total_count}</span>
+                  <h5 className="font-bold text-xs text-slate-200">
+                    {translateEntityTitle(counter.title, language)}
+                  </h5>
+                  <span className="text-[10px] text-indigo-400 font-semibold">
+                    {t('tm_total_count', { count: counter.total_count })}
+                  </span>
                 </div>
               </div>
 
@@ -503,7 +507,6 @@ export const TaskManager: React.FC = () => {
                 <button
                   onClick={() => openEditCounter(counter)}
                   className="p-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
-                  title="Редагувати лічильник"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                 </button>
@@ -515,7 +518,6 @@ export const TaskManager: React.FC = () => {
                       ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
                       : 'bg-slate-800 text-slate-500 border-slate-700'
                   }`}
-                  title={counter.show_on_dashboard ? 'Сховати з головного екрана' : 'Показати на головному екрані'}
                 >
                   {counter.show_on_dashboard ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                 </button>
@@ -523,7 +525,6 @@ export const TaskManager: React.FC = () => {
                 <button
                   onClick={() => deleteCounter(counter.id)}
                   className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800"
-                  title="Видалити"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

@@ -26,7 +26,7 @@ interface DashboardContentProps {
 }
 
 const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenRoulette }) => {
-  const { household, tasks, counters, completeTask, incrementCounter } = useApp();
+  const { household, tasks, counters, completeTask, incrementCounter, t } = useApp();
   const [activeCameraAction, setActiveCameraAction] = useState<{
     type: 'task' | 'counter';
     entity: Task | Counter;
@@ -109,17 +109,17 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenRoulette }) =
           <div className="flex items-center space-x-2">
             <span className="text-base">🏓</span>
             <h3 className="font-extrabold text-white text-sm tracking-tight">
-              Блок «DuoDone» (Черга завдань)
+              {t('tasks_section_title')}
             </h3>
           </div>
           <span className="text-[10px] text-slate-400 font-medium">
-            {visibleTasks.length} активних
+            {visibleTasks.length} {t('tasks_active_count')}
           </span>
         </div>
 
         {visibleTasks.length === 0 ? (
           <div className="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-6 text-center text-slate-400 text-xs">
-            Немає закріплених завдань. Увімкніть їх у Налаштуваннях!
+            {t('tasks_empty')}
           </div>
         ) : (
           <div className="space-y-3">
@@ -142,11 +142,11 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenRoulette }) =
             <div className="flex items-center space-x-2">
               <span className="text-base">🔢</span>
               <h3 className="font-extrabold text-white text-sm tracking-tight">
-                Блок «Лічильники» (Плитки дій)
+                {t('counters_section_title')}
               </h3>
             </div>
             <span className="text-[10px] text-slate-400 font-medium">
-              {displayedCounters.length} на екрані
+              {displayedCounters.length} {t('counters_on_screen')}
             </span>
           </div>
 
@@ -169,8 +169,8 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenRoulette }) =
             >
               <span>
                 {showAllCounters
-                  ? 'Сховати додаткові лічильники'
-                  : `Більше лічильників (+${hiddenCounters.length})`}
+                  ? t('counters_hide')
+                  : `${t('counters_more')} (+${hiddenCounters.length})`}
               </span>
               {showAllCounters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>

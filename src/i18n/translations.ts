@@ -187,6 +187,152 @@ export const CAT_QUOTES: Record<Language, { general: string[]; completion: strin
   }
 };
 
+// Entity title localization lookup table
+const TITLE_LOCALIZATIONS: Record<string, Record<Language, string>> = {
+  'Миття посуду': {
+    uk: 'Миття посуду',
+    en: 'Washing dishes',
+    pl: 'Mycie naczyń',
+    de: 'Geschirr spülen',
+    es: 'Lavar platos',
+    fr: 'Vaisselle',
+    ru: 'Мытье посуды',
+  },
+  'Виніс сміття': {
+    uk: 'Виніс сміття',
+    en: 'Taking out trash',
+    pl: 'Wynoszenie śmieci',
+    de: 'Müll rausbringen',
+    es: 'Sacar basura',
+    fr: 'Poubelles',
+    ru: 'Вынос мусора',
+  },
+  'Вологе прибирання': {
+    uk: 'Вологе прибирання',
+    en: 'Wet cleaning',
+    pl: 'Sprzątanie na mokro',
+    de: 'Nasswischen',
+    es: 'Limpieza húmeda',
+    fr: 'Ménage humide',
+    ru: 'Влажная уборка',
+  },
+  'Миття санвузла': {
+    uk: 'Миття санвузла',
+    en: 'Bathroom cleaning',
+    pl: 'Mycie łazienki',
+    de: 'Bad putzen',
+    es: 'Limpieza de baño',
+    fr: 'Nettoyage salle de bain',
+    ru: 'Мытье саннузла',
+  },
+  'Кава партнеру': {
+    uk: 'Кава партнеру',
+    en: 'Coffee for partner',
+    pl: 'Kawa dla partnera',
+    de: 'Kaffee für Partner',
+    es: 'Café para pareja',
+    fr: 'Café pour partenaire',
+    ru: 'Кофе партнеру',
+  },
+  'Пилососіння': {
+    uk: 'Пилососіння',
+    en: 'Vacuuming',
+    pl: 'Odkurzanie',
+    de: 'Staubsaugen',
+    es: 'Pasar la aspiradora',
+    fr: 'Aspirateur',
+    ru: 'Пылесошение',
+  },
+  'Полив квітів': {
+    uk: 'Полив квітів',
+    en: 'Watering plants',
+    pl: 'Podlewanie kwiatów',
+    de: 'Pflanzen gießen',
+    es: 'Regar plantas',
+    fr: 'Arrosage plantes',
+    ru: 'Полив цветов',
+  },
+  'Замовлення їжі': {
+    uk: 'Замовлення їжі',
+    en: 'Ordering food',
+    pl: 'Zamawianie jedzenia',
+    de: 'Essen bestellen',
+    es: 'Pedir comida',
+    fr: 'Commander à manger',
+    ru: 'Заказ еды',
+  },
+  'Романтична вечеря': {
+    uk: 'Романтична вечеря',
+    en: 'Romantic dinner',
+    pl: 'Romantyczna kolacja',
+    de: 'Romantisches Abendessen',
+    es: 'Cena romántica',
+    fr: 'Dîner romantique',
+    ru: 'Романтический ужин',
+  },
+  'Масаж спини (20 хв)': {
+    uk: 'Масаж спини (20 хв)',
+    en: 'Back massage (20 min)',
+    pl: 'Masaż pleców (20 min)',
+    de: 'Rückenmassage (20 Min)',
+    es: 'Masaje de espalda (20 min)',
+    fr: 'Massage du dos (20 min)',
+    ru: 'Массаж спины (20 мин)',
+  },
+  'Звільнення від прибирання': {
+    uk: 'Звільнення від прибирання',
+    en: 'Chore pass day',
+    pl: 'Dzień bez obowiązków',
+    de: 'Putzfrei-Tag',
+    es: 'Día libre de tareas',
+    fr: 'Journée sans tâches',
+    ru: 'Освобождение от уборки',
+  },
+  'Поцілунок та обійми': {
+    uk: 'Поцілунок та обійми',
+    en: 'Kiss & Hugs',
+    pl: 'Buziaki i uściski',
+    de: 'Kuss & Umarmung',
+    es: 'Beso y abrazo',
+    fr: 'Baiser & Câlin',
+    ru: 'Поцелуй и объятия',
+  },
+  'Приготувати сніданок': {
+    uk: 'Приготувати сніданок',
+    en: 'Cook breakfast',
+    pl: 'Zrobić śniadanie',
+    de: 'Frühstück machen',
+    es: 'Preparar desayuno',
+    fr: 'Préparer le petit-déjeuner',
+    ru: 'Приготовить завтрак',
+  },
+  'Купівля корму коту': {
+    uk: 'Купівля корму коту',
+    en: 'Cat food buying',
+    pl: 'Kupowanie karmy dla kota',
+    de: 'Katzenfutter kaufen',
+    es: 'Comprar comida de gato',
+    fr: 'Achat nourriture chat',
+    ru: 'Покупка корма коту',
+  },
+  'Миття вікон': {
+    uk: 'Миття вікон',
+    en: 'Window cleaning',
+    pl: 'Mycie okien',
+    de: 'Fenster putzen',
+    es: 'Limpiar ventanas',
+    fr: 'Lavage des vitres',
+    ru: 'Мытье окон',
+  },
+};
+
+export function translateEntityTitle(title: string, lang: Language): string {
+  if (TITLE_LOCALIZATIONS[title] && TITLE_LOCALIZATIONS[title][lang]) {
+    return TITLE_LOCALIZATIONS[title][lang];
+  }
+  return title;
+}
+
 export const translations: Record<Language, Record<string, string>> = {
   uk: {
     // Navigation
@@ -228,8 +374,11 @@ export const translations: Record<Language, Record<string, string>> = {
     go_to_roulette: 'Перейти до Рулетки 🎡',
 
     // Balancer Card
-    balancer_title: 'Балансир хатніх справ (XP)',
-    balancer_equal: 'Повна гармонія у внеску! ⚖️',
+    balancer_title: 'Балансир Балів',
+    balancer_subtitle: 'Спільний залік та партнерська підтримка',
+    balancer_tag: 'ГАРМОНІЯ',
+    balancer_season: 'Сезон',
+    balancer_equal: 'Гармонія балів! 🤝 Спільний внесок у дім',
     balancer_lead: 'з перевагою у',
 
     // Tasks section
@@ -288,6 +437,86 @@ export const translations: Record<Language, Record<string, string>> = {
     share_card_btn: 'Поділитись карткою у Telegram 📩',
     copy_invite_btn: 'Скопіювати текст запрошення 📋',
     invite_copied: 'Скопійовано! 📋',
+
+    // Configurator
+    configurator_title: 'Конфігуратор Головного Екрана',
+    configurator_subtitle: 'Оберіть віджети та плитки для швидкого доступу',
+    configurator_balancer_label: 'Відображати віджет балансу XP',
+    configurator_balancer_desc: 'Графічний балансир перетягування каната вгорі',
+    configurator_tasks_header: 'Активні черги Пінг-понгу ({count})',
+    configurator_counters_header: 'Швидкі плитки Лічильників ({count})',
+    show_btn: 'Показати',
+    hide_btn: 'Сховати',
+    on_dashboard_btn: 'На головній',
+    in_archive_btn: 'В архіві',
+
+    // Task & Counter manager
+    tm_tasks_tab: 'DuoDone Завдання ({count})',
+    tm_counters_tab: 'Лічильники ({count})',
+    create_btn: 'Створити',
+    tm_edit_task: 'Редагувати DuoDone Завдання',
+    tm_create_task: 'Створити нове DuoDone Завдання',
+    tm_edit_counter: 'Редагувати Лічильник',
+    tm_create_counter: 'Створити новий Лічильник',
+    tm_task_title_label: 'Назва завдання',
+    tm_task_title_ph: 'Наприклад: Помити підлогу',
+    tm_counter_title_label: 'Назва лічильника',
+    tm_counter_title_ph: 'Наприклад: Купівля корму коту',
+    tm_emoji_label: 'Вибір емодзі',
+    tm_selected: 'Обрано: {icon}',
+    tm_emoji_ph: 'Введіть будь-який емодзі з клавіатури Android...',
+    tm_xp_cost: 'Вартість XP (1 - 5)',
+    tm_photo_req: 'Обов’язкове фото',
+    tm_save_changes: 'Зберегти зміни',
+    tm_create_task_btn: 'Створити завдання',
+    tm_create_counter_btn: 'Створити лічильник',
+    tm_photo_mode_label: 'Режим фото підтвердження',
+    tm_photo_none: 'Без фото',
+    tm_photo_optional: 'За бажанням',
+    tm_photo_required: 'Обов’язково',
+    tm_counter_step: 'Крок підрахунку',
+    tm_total_count: 'Всього: {count}',
+    cat_household: '🧹 Побут',
+    cat_food: '🍳 Їжа та Кухня',
+    cat_home_pets: '🪴 Тварини та Дім',
+    cat_auto: '🚗 Авто та Техніка',
+    cat_romance: '💖 Романтика та Дозвілля',
+
+    // Roulette Manager
+    rm_title: 'Сектори Рулетки Долі',
+    rm_subtitle: 'Налаштування та редагування Призів і Покарань',
+    rm_prizes_tab: 'Призи переможця ({count})',
+    rm_penalties_tab: 'Покарання ({count})',
+    rm_prize_ph: 'Новий приз (наприклад: Масаж 30 хв)',
+    rm_penalty_ph: 'Нове покарання (наприклад: Миття вікон)',
+    add_btn: 'Додати',
+
+    // Cat Settings
+    cat_settings_title: 'Консультант-Котик',
+    cat_settings_subtitle: 'Кумедні мотивуючі поради для підтримки миру',
+    cat_name_label: 'Введіть ім\'я для вашого котика:',
+    cat_name_default: 'За замовчуванням: Барсік Всемогутній',
+    cat_name_ph: 'Наприклад: Барсік Всемогутній',
+    cat_save_name: 'Зберегти ім\'я',
+    cat_ask_advice: 'Попросити пораду прямо зараз 🐾',
+
+    // Counter Modal
+    cm_photo_req_desc: 'Обов’язкова фотофіксація перед зарахуванням',
+    cm_photo_opt_desc: 'Додайте фотофіксацію за бажанням',
+    cm_processed_webp: 'Оброблено WebP',
+    cm_compressing: 'Стиснення фото...',
+    cm_take_photo_req: 'Зробити знімок камери',
+    cm_take_photo_opt: 'Зробити фото підтвердження',
+    cm_live_only: 'Тільки жива зйомка з пристрою',
+    cm_confirm: 'Підтвердити',
+
+    // Detail Modal
+    cdm_duodone_task: 'Завдання DuoDone',
+    cdm_counter: 'Лічильник',
+    cdm_total_actions: 'Всього дій: {count}',
+    cdm_times: '{count} раза',
+    cdm_timeline: 'Хронологія дій ({count})',
+    cdm_empty: 'Історія поки порожня. Зробіть першу дію!',
   },
   en: {
     // Navigation
@@ -329,8 +558,11 @@ export const translations: Record<Language, Record<string, string>> = {
     go_to_roulette: 'Go to Roulette 🎡',
 
     // Balancer Card
-    balancer_title: 'Chore Balancer (XP)',
-    balancer_equal: 'Perfect contribution balance! ⚖️',
+    balancer_title: 'Score Balancer',
+    balancer_subtitle: 'Joint score & partner support',
+    balancer_tag: 'HARMONY',
+    balancer_season: 'Season',
+    balancer_equal: 'Score harmony! 🤝 Joint contribution',
     balancer_lead: 'leading by',
 
     // Tasks section
@@ -389,6 +621,86 @@ export const translations: Record<Language, Record<string, string>> = {
     share_card_btn: 'Share card on Telegram 📩',
     copy_invite_btn: 'Copy invite text 📋',
     invite_copied: 'Copied! 📋',
+
+    // Configurator
+    configurator_title: 'Dashboard Configurator',
+    configurator_subtitle: 'Choose widgets and quick access tiles',
+    configurator_balancer_label: 'Display XP balance widget',
+    configurator_balancer_desc: 'Tug-of-war graphical balancer on top',
+    configurator_tasks_header: 'Active Ping-pong queues ({count})',
+    configurator_counters_header: 'Quick Counter tiles ({count})',
+    show_btn: 'Show',
+    hide_btn: 'Hide',
+    on_dashboard_btn: 'On dashboard',
+    in_archive_btn: 'Archived',
+
+    // Task & Counter manager
+    tm_tasks_tab: 'DuoDone Tasks ({count})',
+    tm_counters_tab: 'Counters ({count})',
+    create_btn: 'Create',
+    tm_edit_task: 'Edit DuoDone Task',
+    tm_create_task: 'Create New DuoDone Task',
+    tm_edit_counter: 'Edit Counter',
+    tm_create_counter: 'Create New Counter',
+    tm_task_title_label: 'Task title',
+    tm_task_title_ph: 'E.g.: Wash floors',
+    tm_counter_title_label: 'Counter title',
+    tm_counter_title_ph: 'E.g.: Cat food purchase',
+    tm_emoji_label: 'Emoji picker',
+    tm_selected: 'Selected: {icon}',
+    tm_emoji_ph: 'Enter any emoji from keyboard...',
+    tm_xp_cost: 'XP Value (1 - 5)',
+    tm_photo_req: 'Photo required',
+    tm_save_changes: 'Save changes',
+    tm_create_task_btn: 'Create task',
+    tm_create_counter_btn: 'Create counter',
+    tm_photo_mode_label: 'Photo verification mode',
+    tm_photo_none: 'No photo',
+    tm_photo_optional: 'Optional',
+    tm_photo_required: 'Required',
+    tm_counter_step: 'Step count',
+    tm_total_count: 'Total: {count}',
+    cat_household: '🧹 Household',
+    cat_food: '🍳 Food & Kitchen',
+    cat_home_pets: '🪴 Home & Pets',
+    cat_auto: '🚗 Auto & Tech',
+    cat_romance: '💖 Romance & Leisure',
+
+    // Roulette Manager
+    rm_title: 'Roulette Sectors',
+    rm_subtitle: 'Configure Prizes and Penalties',
+    rm_prizes_tab: 'Winner Prizes ({count})',
+    rm_penalties_tab: 'Penalties ({count})',
+    rm_prize_ph: 'New prize (e.g.: 30-min Massage)',
+    rm_penalty_ph: 'New penalty (e.g.: Clean windows)',
+    add_btn: 'Add',
+
+    // Cat Settings
+    cat_settings_title: 'Cat Counselor',
+    cat_settings_subtitle: 'Funny motivating advice to keep peace',
+    cat_name_label: 'Enter a name for your cat:',
+    cat_name_default: 'Default: Barsik Almighty',
+    cat_name_ph: 'E.g.: Barsik Almighty',
+    cat_save_name: 'Save name',
+    cat_ask_advice: 'Ask advice right now 🐾',
+
+    // Counter Modal
+    cm_photo_req_desc: 'Photo verification required before logging',
+    cm_photo_opt_desc: 'Add optional photo proof',
+    cm_processed_webp: 'WebP Processed',
+    cm_compressing: 'Compressing photo...',
+    cm_take_photo_req: 'Take camera shot',
+    cm_take_photo_opt: 'Take proof photo',
+    cm_live_only: 'Live camera capture only',
+    cm_confirm: 'Confirm',
+
+    // Detail Modal
+    cdm_duodone_task: 'DuoDone Task',
+    cdm_counter: 'Counter',
+    cdm_total_actions: 'Total actions: {count}',
+    cdm_times: '{count} times',
+    cdm_timeline: 'Action timeline ({count})',
+    cdm_empty: 'History is empty. Take the first action!',
   },
   pl: {
     // Navigation
@@ -414,7 +726,7 @@ export const translations: Record<Language, Record<string, string>> = {
     tg_id_invite: 'TG ID: Połączono po przyjęciu zaproszenia',
 
     // Quick Start Banner
-    quick_start_title: 'Wszystko gotowe! Ниc nie trzeba wpisywać 🎉',
+    quick_start_title: 'Wszystko gotowe! Nic nie trzeba wpisywać 🎉',
     quick_start_desc: 'Stworzyliśmy dla Was gotowe zadania (🧽 Mycie naczyń, 🗑️ Wynoszenie śmieci) i liczniki. Klikaj i przekazuj kolejkę!',
     quick_start_btn: 'Super, zaczynamy! 🚀',
 
@@ -430,8 +742,11 @@ export const translations: Record<Language, Record<string, string>> = {
     go_to_roulette: 'Przejdź do Ruletki 🎡',
 
     // Balancer Card
-    balancer_title: 'Balancer obowiązków (XP)',
-    balancer_equal: 'Pełna harmonia wkładu! ⚖️',
+    balancer_title: 'Balancer Punktów',
+    balancer_subtitle: 'Wspólny wynik i wsparcie partnera',
+    balancer_tag: 'HARMONIA',
+    balancer_season: 'Sezon',
+    balancer_equal: 'Harmonia punktów! 🤝 Wspólny wkład',
     balancer_lead: 'z przewagą',
 
     // Tasks section
@@ -490,6 +805,86 @@ export const translations: Record<Language, Record<string, string>> = {
     share_card_btn: 'Udostępnij kartę na Telegramie 📩',
     copy_invite_btn: 'Skopiuj tekst zaproszenia 📋',
     invite_copied: 'Skopiowano! 📋',
+
+    // Configurator
+    configurator_title: 'Konfigurator Ekranu Głównego',
+    configurator_subtitle: 'Wybierz widżety i kafelki szybkiego dostępu',
+    configurator_balancer_label: 'Wyświetlaj widżet balansu XP',
+    configurator_balancer_desc: 'Graficzny przeciąganie liny na górze',
+    configurator_tasks_header: 'Aktywne kolejki Ping-pong ({count})',
+    configurator_counters_header: 'Szybkie kafelki Liczników ({count})',
+    show_btn: 'Pokaż',
+    hide_btn: 'Ukryj',
+    on_dashboard_btn: 'Na głównej',
+    in_archive_btn: 'W archiwum',
+
+    // Task & Counter manager
+    tm_tasks_tab: 'Zadania DuoDone ({count})',
+    tm_counters_tab: 'Liczniki ({count})',
+    create_btn: 'Stwórz',
+    tm_edit_task: 'Edytuj Zadanie DuoDone',
+    tm_create_task: 'Stwórz Nowe Zadanie DuoDone',
+    tm_edit_counter: 'Edytuj Licznik',
+    tm_create_counter: 'Stwórz Nowy Licznik',
+    tm_task_title_label: 'Nazwa zadania',
+    tm_task_title_ph: 'Np.: Umyć podłogę',
+    tm_counter_title_label: 'Nazwa licznika',
+    tm_counter_title_ph: 'Np.: Zakup karmy dla kota',
+    tm_emoji_label: 'Wybór emoji',
+    tm_selected: 'Wybrano: {icon}',
+    tm_emoji_ph: 'Wpisz dowolne emoji...',
+    tm_xp_cost: 'Wartość XP (1 - 5)',
+    tm_photo_req: 'Wymagane zdjęcie',
+    tm_save_changes: 'Zapisz zmiany',
+    tm_create_task_btn: 'Stwórz zadanie',
+    tm_create_counter_btn: 'Stwórz licznik',
+    tm_photo_mode_label: 'Tryb weryfikacji zdjęciem',
+    tm_photo_none: 'Bez zdjęcia',
+    tm_photo_optional: 'Opcjonalnie',
+    tm_photo_required: 'Wymagane',
+    tm_counter_step: 'Krok liczenia',
+    tm_total_count: 'Łącznie: {count}',
+    cat_household: '🧹 Dom',
+    cat_food: '🍳 Jedzenie i Kuchnia',
+    cat_home_pets: '🪴 Zwierzęta i Dom',
+    cat_auto: '🚗 Auto i Technika',
+    cat_romance: '💖 Romance i Czas wolny',
+
+    // Roulette Manager
+    rm_title: 'Sektory Ruletki',
+    rm_subtitle: 'Konfiguracja Nagród i Kar',
+    rm_prizes_tab: 'Nagrody Zwycięzcy ({count})',
+    rm_penalties_tab: 'Kary ({count})',
+    rm_prize_ph: 'Nowa nagroda (np.: Masaż 30 min)',
+    rm_penalty_ph: 'Nowa kara (np.: Mycie okien)',
+    add_btn: 'Dodaj',
+
+    // Cat Settings
+    cat_settings_title: 'Kot Doradca',
+    cat_settings_subtitle: 'Zabawne porady motywacyjne',
+    cat_name_label: 'Wpisz imię swojego kota:',
+    cat_name_default: 'Domyślnie: Barsik Wszechmogący',
+    cat_name_ph: 'Np.: Barsik Wszechmogący',
+    cat_save_name: 'Zapisz imię',
+    cat_ask_advice: 'Poproś o radę teraz 🐾',
+
+    // Counter Modal
+    cm_photo_req_desc: 'Wymagane zdjęcie przed zaliczeniem',
+    cm_photo_opt_desc: 'Dodaj zdjęcie opcjonalnie',
+    cm_processed_webp: 'Przetworzono WebP',
+    cm_compressing: 'Kompresja zdjęcia...',
+    cm_take_photo_req: 'Zrób zdjęcie aparatem',
+    cm_take_photo_opt: 'Zrób zdjęcie dowodu',
+    cm_live_only: 'Tylko zdjęcie na żywo z urządzenia',
+    cm_confirm: 'Zatwierdź',
+
+    // Detail Modal
+    cdm_duodone_task: 'Zadanie DuoDone',
+    cdm_counter: 'Licznik',
+    cdm_total_actions: 'Łącznie akcji: {count}',
+    cdm_times: '{count} razy',
+    cdm_timeline: 'Oś czasu akcji ({count})',
+    cdm_empty: 'Historia jest pusta. Wykonaj pierwszą akcję!',
   },
   de: {
     // Navigation
@@ -531,8 +926,11 @@ export const translations: Record<Language, Record<string, string>> = {
     go_to_roulette: 'Zum Roulette 🎡',
 
     // Balancer Card
-    balancer_title: 'Haushalts-Balancer (XP)',
-    balancer_equal: 'Perfekte Harmonie! ⚖️',
+    balancer_title: 'Punkte-Balancer',
+    balancer_subtitle: 'Gemeinsame Punkte & Partner-Unterstützung',
+    balancer_tag: 'HARMONIE',
+    balancer_season: 'Saison',
+    balancer_equal: 'Punkte-Harmonie! 🤝 Gemeinsamer Beitrag',
     balancer_lead: 'mit Vorsprung von',
 
     // Tasks section
@@ -591,6 +989,86 @@ export const translations: Record<Language, Record<string, string>> = {
     share_card_btn: 'Karte auf Telegram teilen 📩',
     copy_invite_btn: 'Einladungstext kopieren 📋',
     invite_copied: 'Kopiert! 📋',
+
+    // Configurator
+    configurator_title: 'Startbildschirm-Konfigurator',
+    configurator_subtitle: 'Wählen Sie Widgets und Kacheln für den Schnellzugriff',
+    configurator_balancer_label: 'XP-Balance-Widget anzeigen',
+    configurator_balancer_desc: 'Taustechen-Grafik oben anzeigen',
+    configurator_tasks_header: 'Aktive Tischtennis-Warteschlangen ({count})',
+    configurator_counters_header: 'Schnellzähler-Kacheln ({count})',
+    show_btn: 'Anzeigen',
+    hide_btn: 'Verbergen',
+    on_dashboard_btn: 'Auf Startseite',
+    in_archive_btn: 'Archiviert',
+
+    // Task & Counter manager
+    tm_tasks_tab: 'DuoDone Aufgaben ({count})',
+    tm_counters_tab: 'Zähler ({count})',
+    create_btn: 'Erstellen',
+    tm_edit_task: 'DuoDone Aufgabe bearbeiten',
+    tm_create_task: 'Neue DuoDone Aufgabe erstellen',
+    tm_edit_counter: 'Zähler bearbeiten',
+    tm_create_counter: 'Neuen Zähler erstellen',
+    tm_task_title_label: 'Aufgabenbezeichnung',
+    tm_task_title_ph: 'Z.B.: Boden wischen',
+    tm_counter_title_label: 'Zählerbezeichnung',
+    tm_counter_title_ph: 'Z.B.: Katzenfutter kaufen',
+    tm_emoji_label: 'Emoji-Auswahl',
+    tm_selected: 'Ausgewählt: {icon}',
+    tm_emoji_ph: 'Geben Sie ein Emoji ein...',
+    tm_xp_cost: 'XP-Wert (1 - 5)',
+    tm_photo_req: 'Foto erforderlich',
+    tm_save_changes: 'Änderungen speichern',
+    tm_create_task_btn: 'Aufgabe erstellen',
+    tm_create_counter_btn: 'Zähler erstellen',
+    tm_photo_mode_label: 'Fotobestätigungsmodus',
+    tm_photo_none: 'Kein Foto',
+    tm_photo_optional: 'Optional',
+    tm_photo_required: 'Erforderlich',
+    tm_counter_step: 'Schrittweite',
+    tm_total_count: 'Gesamt: {count}',
+    cat_household: '🧹 Haushalt',
+    cat_food: '🍳 Essen & Küche',
+    cat_home_pets: '🪴 Tiere & Wohnen',
+    cat_auto: '🚗 Auto & Technik',
+    cat_romance: '💖 Romantik & Freizeit',
+
+    // Roulette Manager
+    rm_title: 'Roulette-Sektoren',
+    rm_subtitle: 'Preise und Strafen verwalten',
+    rm_prizes_tab: 'Siegerpreise ({count})',
+    rm_penalties_tab: 'Strafen ({count})',
+    rm_prize_ph: 'Neuer Preis (z.B.: 30 Min Massage)',
+    rm_penalty_ph: 'Neue Strafe (z.B.: Fenster putzen)',
+    add_btn: 'Hinzufügen',
+
+    // Cat Settings
+    cat_settings_title: 'Katzen-Ratgeber',
+    cat_settings_subtitle: 'Lustige Ratschläge für den Frieden',
+    cat_name_label: 'Namen für Ihre Katze eingeben:',
+    cat_name_default: 'Standard: Barsik der Allmächtige',
+    cat_name_ph: 'Z.B.: Barsik der Allmächtige',
+    cat_save_name: 'Namen speichern',
+    cat_ask_advice: 'Jetzt um Rat fragen 🐾',
+
+    // Counter Modal
+    cm_photo_req_desc: 'Fotobestätigung vor dem Buchen erforderlich',
+    cm_photo_opt_desc: 'Optionales Foto hinzufügen',
+    cm_processed_webp: 'WebP Verarbeitet',
+    cm_compressing: 'Foto wird komprimiert...',
+    cm_take_photo_req: 'Kameraaufnahme machen',
+    cm_take_photo_opt: 'Beweisfoto machen',
+    cm_live_only: 'Nur Live-Kameraaufnahme vom Gerät',
+    cm_confirm: 'Bestätigen',
+
+    // Detail Modal
+    cdm_duodone_task: 'DuoDone Aufgabe',
+    cdm_counter: 'Zähler',
+    cdm_total_actions: 'Gesamtaktionen: {count}',
+    cdm_times: '{count}-mal',
+    cdm_timeline: 'Aktivitäts-Zeitleiste ({count})',
+    cdm_empty: 'Die Historie ist noch leer. Führen Sie die erste Aktion aus!',
   },
   es: {
     // Navigation
@@ -632,8 +1110,11 @@ export const translations: Record<Language, Record<string, string>> = {
     go_to_roulette: 'Ir a la Ruleta 🎡',
 
     // Balancer Card
-    balancer_title: 'Balanceador de tareas (XP)',
-    balancer_equal: '¡Armonía perfecta en la contribución! ⚖️',
+    balancer_title: 'Balanceador de Puntos',
+    balancer_subtitle: 'Puntuación conjunta y apoyo mutuo',
+    balancer_tag: 'ARMONÍA',
+    balancer_season: 'Temporada',
+    balancer_equal: '¡Armonía de puntos! 🤝 Contribución conjunta',
     balancer_lead: 'con ventaja de',
 
     // Tasks section
@@ -692,6 +1173,86 @@ export const translations: Record<Language, Record<string, string>> = {
     share_card_btn: 'Compartir tarjeta en Telegram 📩',
     copy_invite_btn: 'Copiar texto de invitación 📋',
     invite_copied: '¡Copiado! 📋',
+
+    // Configurador
+    configurator_title: 'Configurador de Inicio',
+    configurator_subtitle: 'Elige widgets y tarjetas de acceso rápido',
+    configurator_balancer_label: 'Mostrar widget de balance XP',
+    configurator_balancer_desc: 'Gráfico de tirar de la cuerda arriba',
+    configurator_tasks_header: 'Colas activas de Ping-pong ({count})',
+    configurator_counters_header: 'Tarjetas de contadores rápidos ({count})',
+    show_btn: 'Mostrar',
+    hide_btn: 'Ocultar',
+    on_dashboard_btn: 'En inicio',
+    in_archive_btn: 'Archivados',
+
+    // Task & Counter manager
+    tm_tasks_tab: 'Tareas DuoDone ({count})',
+    tm_counters_tab: 'Contadores ({count})',
+    create_btn: 'Crear',
+    tm_edit_task: 'Editar Tarea DuoDone',
+    tm_create_task: 'Crear Nueva Tarea DuoDone',
+    tm_edit_counter: 'Editar Contador',
+    tm_create_counter: 'Crear Nuevo Contador',
+    tm_task_title_label: 'Título de la tarea',
+    tm_task_title_ph: 'Ej.: Limpiar el suelo',
+    tm_counter_title_label: 'Título del contador',
+    tm_counter_title_ph: 'Ej.: Comprar comida para gato',
+    tm_emoji_label: 'Selector de emoji',
+    tm_selected: 'Seleccionado: {icon}',
+    tm_emoji_ph: 'Escribe cualquier emoji...',
+    tm_xp_cost: 'Valor XP (1 - 5)',
+    tm_photo_req: 'Foto obligatoria',
+    tm_save_changes: 'Guardar cambios',
+    tm_create_task_btn: 'Crear tarea',
+    tm_create_counter_btn: 'Crear contador',
+    tm_photo_mode_label: 'Modo de verificación por foto',
+    tm_photo_none: 'Sin foto',
+    tm_photo_optional: 'Opcional',
+    tm_photo_required: 'Obligatorio',
+    tm_counter_step: 'Paso de conteo',
+    tm_total_count: 'Total: {count}',
+    cat_household: '🧹 Hogar',
+    cat_food: '🍳 Comida y Cocina',
+    cat_home_pets: '🪴 Mascotas y Casa',
+    cat_auto: '🚗 Auto y Tecnología',
+    cat_romance: '💖 Romance y Ocio',
+
+    // Roulette Manager
+    rm_title: 'Sectores de Ruleta',
+    rm_subtitle: 'Configurar Premios y Penalizaciones',
+    rm_prizes_tab: 'Premios Ganador ({count})',
+    rm_penalties_tab: 'Penalizaciones ({count})',
+    rm_prize_ph: 'Nuevo premio (ej.: Masaje 30 min)',
+    rm_penalty_ph: 'Nueva penalización (ej.: Limpiar ventanas)',
+    add_btn: 'Añadir',
+
+    // Cat Settings
+    cat_settings_title: 'Gato Consejero',
+    cat_settings_subtitle: 'Consejos divertidos para mantener la paz',
+    cat_name_label: 'Escribe el nombre de tu gato:',
+    cat_name_default: 'Por defecto: Barsik Todopoderoso',
+    cat_name_ph: 'Ej.: Barsik Todopoderoso',
+    cat_save_name: 'Guardar nombre',
+    cat_ask_advice: 'Pedir consejo ahora 🐾',
+
+    // Counter Modal
+    cm_photo_req_desc: 'Foto obligatoria antes de registrar',
+    cm_photo_opt_desc: 'Añadir foto opcional de prueba',
+    cm_processed_webp: 'WebP Procesado',
+    cm_compressing: 'Comprimiendo foto...',
+    cm_take_photo_req: 'Tomar foto con la cámara',
+    cm_take_photo_opt: 'Tomar foto de prueba',
+    cm_live_only: 'Solo captura en vivo del dispositivo',
+    cm_confirm: 'Confirmar',
+
+    // Detail Modal
+    cdm_duodone_task: 'Tarea DuoDone',
+    cdm_counter: 'Contador',
+    cdm_total_actions: 'Total de acciones: {count}',
+    cdm_times: '{count} veces',
+    cdm_timeline: 'Línea de tiempo ({count})',
+    cdm_empty: 'El historial está vacío. ¡Haz la primera acción!',
   },
   fr: {
     // Navigation
@@ -733,8 +1294,11 @@ export const translations: Record<Language, Record<string, string>> = {
     go_to_roulette: 'Aller à la Roulette 🎡',
 
     // Balancer Card
-    balancer_title: 'Équilibreur de tâches (XP)',
-    balancer_equal: 'Harmonie parfaite dans les contributions ! ⚖️',
+    balancer_title: 'Équilibreur de Points',
+    balancer_subtitle: 'Score conjoint et soutien mutuel',
+    balancer_tag: 'HARMONIE',
+    balancer_season: 'Saison',
+    balancer_equal: 'Harmonie des points ! 🤝 Contribution conjointe',
     balancer_lead: 'avec une avance de',
 
     // Tasks section
@@ -793,6 +1357,86 @@ export const translations: Record<Language, Record<string, string>> = {
     share_card_btn: 'Partager la carte sur Telegram 📩',
     copy_invite_btn: 'Copier le texte d\'invitation 📋',
     invite_copied: 'Copié ! 📋',
+
+    // Configurator
+    configurator_title: 'Configurateur d\'Accueil',
+    configurator_subtitle: 'Choisissez les widgets et tuiles d\'accès rapide',
+    configurator_balancer_label: 'Afficher le widget d\'équilibre XP',
+    configurator_balancer_desc: 'Graphique du tir à la corde en haut',
+    configurator_tasks_header: 'Files actives de Ping-pong ({count})',
+    configurator_counters_header: 'Tuiles de compteurs rapides ({count})',
+    show_btn: 'Afficher',
+    hide_btn: 'Masquer',
+    on_dashboard_btn: 'Sur l\'accueil',
+    in_archive_btn: 'Archivé',
+
+    // Task & Counter manager
+    tm_tasks_tab: 'Tâches DuoDone ({count})',
+    tm_counters_tab: 'Compteurs ({count})',
+    create_btn: 'Créer',
+    tm_edit_task: 'Modifier la Tâche DuoDone',
+    tm_create_task: 'Créer une Nouvelle Tâche DuoDone',
+    tm_edit_counter: 'Modifier le Compteur',
+    tm_create_counter: 'Créer un Nouveau Compteur',
+    tm_task_title_label: 'Titre de la tâche',
+    tm_task_title_ph: 'Ex. : Laver le sol',
+    tm_counter_title_label: 'Titre du compteur',
+    tm_counter_title_ph: 'Ex. : Achat nourriture chat',
+    tm_emoji_label: 'Sélecteur d\'émoji',
+    tm_selected: 'Sélectionné : {icon}',
+    tm_emoji_ph: 'Entrez n\'importe quel émoji...',
+    tm_xp_cost: 'Valeur XP (1 - 5)',
+    tm_photo_req: 'Photo obligatoire',
+    tm_save_changes: 'Enregistrer les modifications',
+    tm_create_task_btn: 'Créer la tâche',
+    tm_create_counter_btn: 'Créer le compteur',
+    tm_photo_mode_label: 'Mode de vérification par photo',
+    tm_photo_none: 'Sans photo',
+    tm_photo_optional: 'Optionnel',
+    tm_photo_required: 'Obligatoire',
+    tm_counter_step: 'Pas de comptage',
+    tm_total_count: 'Total : {count}',
+    cat_household: '🧹 Ménage',
+    cat_food: '🍳 Cuisine',
+    cat_home_pets: '🪴 Animaux & Maison',
+    cat_auto: '🚗 Auto & High-tech',
+    cat_romance: '💖 Romance & Loisirs',
+
+    // Roulette Manager
+    rm_title: 'Secteurs de Roulette',
+    rm_subtitle: 'Configurer les Prix et Pénalités',
+    rm_prizes_tab: 'Prix Gagnant ({count})',
+    rm_penalties_tab: 'Pénalités ({count})',
+    rm_prize_ph: 'Nouveau prix (ex. : Massage 30 min)',
+    rm_penalty_ph: 'Nouvelle pénalité (ex. : Vitres)',
+    add_btn: 'Ajouter',
+
+    // Cat Settings
+    cat_settings_title: 'Chat Conseiller',
+    cat_settings_subtitle: 'Conseils amusants pour maintenir la paix',
+    cat_name_label: 'Entrez le nom de votre chat :',
+    cat_name_default: 'Par défaut : Barsik le Tout-Puissant',
+    cat_name_ph: 'Ex. : Barsik le Tout-Puissant',
+    cat_save_name: 'Enregistrer le nom',
+    cat_ask_advice: 'Demander un conseil maintenant 🐾',
+
+    // Counter Modal
+    cm_photo_req_desc: 'Preuve photo obligatoire avant validation',
+    cm_photo_opt_desc: 'Ajouter une photo optionnelle',
+    cm_processed_webp: 'WebP Traité',
+    cm_compressing: 'Compression de la photo...',
+    cm_take_photo_req: 'Prendre une photo',
+    cm_take_photo_opt: 'Prendre une photo preuve',
+    cm_live_only: 'Capture en direct sur l\'appareil uniquement',
+    cm_confirm: 'Confirmer',
+
+    // Detail Modal
+    cdm_duodone_task: 'Tâche DuoDone',
+    cdm_counter: 'Compteur',
+    cdm_total_actions: 'Total des actions : {count}',
+    cdm_times: '{count} fois',
+    cdm_timeline: 'Chronologie des actions ({count})',
+    cdm_empty: 'L\'historique est vide. Effectuez la première action !',
   },
   ru: {
     // Navigation
@@ -834,8 +1478,11 @@ export const translations: Record<Language, Record<string, string>> = {
     go_to_roulette: 'Перейти к Рулетке 🎡',
 
     // Balancer Card
-    balancer_title: 'Балансир бытовых дел (XP)',
-    balancer_equal: 'Полная гармония во вкладе! ⚖️',
+    balancer_title: 'Балансир Баллов',
+    balancer_subtitle: 'Совместный зачет и партнерская поддержка',
+    balancer_tag: 'ГАРМОНИЯ',
+    balancer_season: 'Сезон',
+    balancer_equal: 'Гармония баллов! 🤝 Совместный вклад в дом',
     balancer_lead: 'с преимуществом в',
 
     // Tasks section
@@ -894,16 +1541,98 @@ export const translations: Record<Language, Record<string, string>> = {
     share_card_btn: 'Поделиться карточкой в Telegram 📩',
     copy_invite_btn: 'Скопировать текст приглашения 📋',
     invite_copied: 'Скопировано! 📋',
+
+    // Configurator
+    configurator_title: 'Конфигуратор Главного Экрана',
+    configurator_subtitle: 'Выберите виджеты и плитки для быстрого доступа',
+    configurator_balancer_label: 'Отображать виджет баланса XP',
+    configurator_balancer_desc: 'Графический балансир перетягивания каната вверху',
+    configurator_tasks_header: 'Активные очереди Пинг-понга ({count})',
+    configurator_counters_header: 'Быстрые плитки Счетчиков ({count})',
+    show_btn: 'Показать',
+    hide_btn: 'Скрыть',
+    on_dashboard_btn: 'На главной',
+    in_archive_btn: 'В архиве',
+
+    // Task & Counter manager
+    tm_tasks_tab: 'DuoDone Задачи ({count})',
+    tm_counters_tab: 'Счетчики ({count})',
+    create_btn: 'Создать',
+    tm_edit_task: 'Редактировать DuoDone Задачу',
+    tm_create_task: 'Создать новую DuoDone Задачу',
+    tm_edit_counter: 'Редактировать Счетчик',
+    tm_create_counter: 'Создать новый Счетчик',
+    tm_task_title_label: 'Название задачи',
+    tm_task_title_ph: 'Например: Помыть пол',
+    tm_counter_title_label: 'Название счетчика',
+    tm_counter_title_ph: 'Например: Покупка корма коту',
+    tm_emoji_label: 'Выбор эмодзи',
+    tm_selected: 'Выбрано: {icon}',
+    tm_emoji_ph: 'Введите любой эмодзи...',
+    tm_xp_cost: 'Стоимость XP (1 - 5)',
+    tm_photo_req: 'Обязательное фото',
+    tm_save_changes: 'Сохранить изменения',
+    tm_create_task_btn: 'Создать задачу',
+    tm_create_counter_btn: 'Создать счетчик',
+    tm_photo_mode_label: 'Режим фото подтверждения',
+    tm_photo_none: 'Без фото',
+    tm_photo_optional: 'По желанию',
+    tm_photo_required: 'Обязательно',
+    tm_counter_step: 'Шаг подсчета',
+    tm_total_count: 'Всего: {count}',
+    cat_household: '🧹 Быт',
+    cat_food: '🍳 Еда и Кухня',
+    cat_home_pets: '🪴 Животные и Дом',
+    cat_auto: '🚗 Авто и Техника',
+    cat_romance: '💖 Романтика и Досуг',
+
+    // Roulette Manager
+    rm_title: 'Секторы Рулетки Судьбы',
+    rm_subtitle: 'Настройка и редактирование Призов и Наказаний',
+    rm_prizes_tab: 'Призы победителя ({count})',
+    rm_penalties_tab: 'Наказания ({count})',
+    rm_prize_ph: 'Новый приз (например: Массаж 30 мин)',
+    rm_penalty_ph: 'Новое наказание (например: Мытье окон)',
+    add_btn: 'Добавить',
+
+    // Cat Settings
+    cat_settings_title: 'Консультант-Котик',
+    cat_settings_subtitle: 'Смешные мотивирующие советы для поддержания мира',
+    cat_name_label: 'Введите имя для вашего котика:',
+    cat_name_default: 'По умолчанию: Барсик Всемогущий',
+    cat_name_ph: 'Например: Барсик Всемогущий',
+    cat_save_name: 'Сохранить имя',
+    cat_ask_advice: 'Попросить совет прямо сейчас 🐾',
+
+    // Counter Modal
+    cm_photo_req_desc: 'Обязательная фотофиксация перед зачислением',
+    cm_photo_opt_desc: 'Добавьте фотофиксацию по желанию',
+    cm_processed_webp: 'Обработано WebP',
+    cm_compressing: 'Сжатие фото...',
+    cm_take_photo_req: 'Сделать снимок камеры',
+    cm_take_photo_opt: 'Сделать фото подтверждения',
+    cm_live_only: 'Только живая съемка с устройства',
+    cm_confirm: 'Подтвердить',
+
+    // Detail Modal
+    cdm_duodone_task: 'Задача DuoDone',
+    cdm_counter: 'Счетчик',
+    cdm_total_actions: 'Всего действий: {count}',
+    cdm_times: '{count} раза',
+    cdm_timeline: 'Хронология действий ({count})',
+    cdm_empty: 'История пока пуста. Сделайте первое действие!',
   },
 };
 
 export function getTranslation(lang: Language, key: string, params?: Record<string, string | number>): string {
   const langDict = translations[lang] || translations.uk;
   let text = langDict[key] || translations.uk[key] || key;
+
   if (params) {
-    Object.keys(params).forEach((paramKey) => {
-      text = text.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(params[paramKey]));
+    Object.entries(params).forEach(([paramKey, paramVal]) => {
+      text = text.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(paramVal));
     });
   }
+
   return text;
 }

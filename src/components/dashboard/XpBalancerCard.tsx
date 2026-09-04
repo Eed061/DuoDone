@@ -1,9 +1,9 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Trophy, Flame, Zap, HeartHandshake, Sparkles } from 'lucide-react';
+import { HeartHandshake, Sparkles, Zap, Flame } from 'lucide-react';
 
 export const XpBalancerCard: React.FC = () => {
-  const { users, userXpMap } = useApp();
+  const { users, userXpMap, t } = useApp();
 
   if (users.length < 2) return null;
 
@@ -18,11 +18,11 @@ export const XpBalancerCard: React.FC = () => {
   const pct2 = totalXp === 0 ? 50 : 100 - pct1;
 
   const xpDiff = Math.abs(xp1 - xp2);
-  let leaderText = 'Гармонія балів! 🤝 Спільний внесок у дім';
+  let leaderText = t('balancer_equal');
   if (xp1 > xp2) {
-    leaderText = `+${xpDiff} XP на користь ${user1.first_name} 👑`;
+    leaderText = `+${xpDiff} XP (${t('balancer_lead')} ${user1.first_name}) 👑`;
   } else if (xp2 > xp1) {
-    leaderText = `+${xpDiff} XP на користь ${user2.first_name} 👑`;
+    leaderText = `+${xpDiff} XP (${t('balancer_lead')} ${user2.first_name}) 👑`;
   }
 
   return (
@@ -34,7 +34,7 @@ export const XpBalancerCard: React.FC = () => {
         <div className="absolute -bottom-16 -right-16 w-36 h-36 bg-pink-500/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-20 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Distinctive Header Arena Badge with HeartHandshake (Partnership & Respect) */}
+        {/* Distinctive Header Arena Badge with HeartHandshake */}
         <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b border-slate-800/80">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-slate-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/30">
@@ -43,19 +43,19 @@ export const XpBalancerCard: React.FC = () => {
             <div>
               <div className="flex items-center space-x-1.5">
                 <h3 className="font-black text-white text-sm tracking-tight uppercase">
-                  Балансир Балів
+                  {t('balancer_title')}
                 </h3>
                 <span className="bg-amber-400/20 text-amber-300 text-[9px] font-black px-1.5 py-0.2 rounded-md border border-amber-400/30 uppercase tracking-widest">
-                  ГАРМОНІЯ
+                  {t('balancer_tag')}
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400 font-medium">Спільний залік та партнерська підтримка</p>
+              <p className="text-[10px] text-slate-400 font-medium">{t('balancer_subtitle')}</p>
             </div>
           </div>
 
           <div className="flex items-center space-x-1 bg-slate-900/90 px-2.5 py-1 rounded-full border border-amber-500/30 text-amber-300 text-[10px] font-extrabold shadow-inner">
             <Sparkles className="w-3 h-3 text-amber-400 animate-bounce" />
-            <span>Сезон</span>
+            <span>{t('balancer_season')}</span>
           </div>
         </div>
 

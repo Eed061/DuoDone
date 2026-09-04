@@ -1,9 +1,10 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Layout, Check, ToggleLeft, ToggleRight, Eye, EyeOff } from 'lucide-react';
+import { translateEntityTitle } from '../../i18n/translations';
+import { Layout, ToggleLeft, ToggleRight, Eye, EyeOff } from 'lucide-react';
 
 export const DashboardConfigurator: React.FC = () => {
-  const { household, updateHousehold, tasks, counters, saveTask, saveCounter } = useApp();
+  const { household, updateHousehold, tasks, counters, saveTask, saveCounter, language, t } = useApp();
 
   const toggleBalancer = () => {
     updateHousehold({ show_balancer_widget: !household.show_balancer_widget });
@@ -22,16 +23,16 @@ export const DashboardConfigurator: React.FC = () => {
       <div className="flex items-center space-x-2 border-b border-slate-700/60 pb-3">
         <Layout className="w-5 h-5 text-indigo-400" />
         <div>
-          <h3 className="font-bold text-white text-base">Конфігуратор Головного Екрана</h3>
-          <p className="text-xs text-slate-400">Оберіть віджети та плитки для швидкого доступу</p>
+          <h3 className="font-bold text-white text-base">{t('configurator_title')}</h3>
+          <p className="text-xs text-slate-400">{t('configurator_subtitle')}</p>
         </div>
       </div>
 
       {/* 1. Balancer Widget Toggle */}
       <div className="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-700/50">
         <div>
-          <h4 className="text-xs font-bold text-slate-200">Відображати віджет балансу XP</h4>
-          <p className="text-[11px] text-slate-400">Графічний балансир перетягування каната вгорі</p>
+          <h4 className="text-xs font-bold text-slate-200">{t('configurator_balancer_label')}</h4>
+          <p className="text-[11px] text-slate-400">{t('configurator_balancer_desc')}</p>
         </div>
         <button
           onClick={toggleBalancer}
@@ -48,7 +49,7 @@ export const DashboardConfigurator: React.FC = () => {
       {/* 2. Ping-Pong Tasks visibility toggles */}
       <div>
         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-          Активні черги Пінг-понгу ({tasks.length})
+          {t('configurator_tasks_header', { count: tasks.length })}
         </h4>
         <div className="space-y-1.5">
           {tasks.map((task) => (
@@ -58,7 +59,9 @@ export const DashboardConfigurator: React.FC = () => {
             >
               <div className="flex items-center space-x-2.5">
                 <span className="text-lg">{task.icon}</span>
-                <span className="text-xs font-semibold text-slate-200">{task.title}</span>
+                <span className="text-xs font-semibold text-slate-200">
+                  {translateEntityTitle(task.title, language)}
+                </span>
               </div>
               <button
                 onClick={() => toggleTaskVisibility(task)}
@@ -71,12 +74,12 @@ export const DashboardConfigurator: React.FC = () => {
                 {task.show_on_dashboard ? (
                   <>
                     <Eye className="w-3.5 h-3.5" />
-                    <span>Показати</span>
+                    <span>{t('show_btn')}</span>
                   </>
                 ) : (
                   <>
                     <EyeOff className="w-3.5 h-3.5" />
-                    <span>Сховати</span>
+                    <span>{t('hide_btn')}</span>
                   </>
                 )}
               </button>
@@ -88,7 +91,7 @@ export const DashboardConfigurator: React.FC = () => {
       {/* 3. Counters visibility toggles */}
       <div>
         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-          Швидкі плитки Лічильників ({counters.length})
+          {t('configurator_counters_header', { count: counters.length })}
         </h4>
         <div className="space-y-1.5">
           {counters.map((counter) => (
@@ -98,7 +101,9 @@ export const DashboardConfigurator: React.FC = () => {
             >
               <div className="flex items-center space-x-2.5">
                 <span className="text-lg">{counter.icon}</span>
-                <span className="text-xs font-semibold text-slate-200">{counter.title}</span>
+                <span className="text-xs font-semibold text-slate-200">
+                  {translateEntityTitle(counter.title, language)}
+                </span>
               </div>
               <button
                 onClick={() => toggleCounterVisibility(counter)}
@@ -111,12 +116,12 @@ export const DashboardConfigurator: React.FC = () => {
                 {counter.show_on_dashboard ? (
                   <>
                     <Eye className="w-3.5 h-3.5" />
-                    <span>На головній</span>
+                    <span>{t('on_dashboard_btn')}</span>
                   </>
                 ) : (
                   <>
                     <EyeOff className="w-3.5 h-3.5" />
-                    <span>В архіві</span>
+                    <span>{t('in_archive_btn')}</span>
                   </>
                 )}
               </button>

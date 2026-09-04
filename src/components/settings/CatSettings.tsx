@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { ToggleLeft, ToggleRight, MessageSquare, Edit3 } from 'lucide-react';
+import { ToggleLeft, ToggleRight, MessageSquare } from 'lucide-react';
 import { CatCounselor } from '../common/CatCounselor';
 
 export const CatSettings: React.FC = () => {
-  const { household, updateHousehold } = useApp();
+  const { household, updateHousehold, t } = useApp();
   const [showTestPopup, setShowTestPopup] = useState(false);
 
   const isEnabled = household.cat_counselor_enabled !== false;
@@ -33,15 +33,14 @@ export const CatSettings: React.FC = () => {
             🐱
           </div>
           <div>
-            <h3 className="font-extrabold text-white text-base">Консультант-Котик</h3>
-            <p className="text-xs text-slate-400">Кумедні мотивуючі поради для підтримки миру</p>
+            <h3 className="font-extrabold text-white text-base">{t('cat_settings_title')}</h3>
+            <p className="text-xs text-slate-400">{t('cat_settings_subtitle')}</p>
           </div>
         </div>
 
         <button
           onClick={toggleEnabled}
           className="text-2xl transition-transform active:scale-95"
-          title={isEnabled ? 'Вимкнути котика' : 'Увімкнути котика'}
         >
           {isEnabled ? (
             <ToggleRight className="w-8 h-8 text-amber-400" />
@@ -56,9 +55,9 @@ export const CatSettings: React.FC = () => {
           {/* Custom Name Input Form */}
           <form onSubmit={handleSaveName} className="space-y-1.5">
             <label className="text-[11px] font-semibold text-slate-300 flex items-center justify-between">
-              <span>Введіть ім'я для вашого котика:</span>
+              <span>{t('cat_name_label')}</span>
               <span className="text-[10px] text-amber-400 font-bold">
-                За замовчуванням: Барсік Всемогутній
+                {t('cat_name_default')}
               </span>
             </label>
             <div className="flex space-x-2">
@@ -66,7 +65,7 @@ export const CatSettings: React.FC = () => {
                 type="text"
                 value={catNameInput}
                 onChange={(e) => setCatNameInput(e.target.value)}
-                placeholder="Наприклад: Барсік Всемогутній"
+                placeholder={t('cat_name_ph')}
                 className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
                 required
               />
@@ -74,7 +73,7 @@ export const CatSettings: React.FC = () => {
                 type="submit"
                 className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold px-3 py-2 rounded-xl border border-amber-500/40"
               >
-                Зберегти ім'я
+                {t('cat_save_name')}
               </button>
             </div>
           </form>
@@ -85,7 +84,7 @@ export const CatSettings: React.FC = () => {
             className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs flex items-center justify-center space-x-1.5 shadow-md shadow-amber-500/20 active:scale-95 transition-all"
           >
             <MessageSquare className="w-4 h-4 stroke-[2.5px]" />
-            <span>Попросити пораду прямо зараз 🐾</span>
+            <span>{t('cat_ask_advice')}</span>
           </button>
         </div>
       )}
