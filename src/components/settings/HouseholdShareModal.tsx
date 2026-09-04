@@ -5,7 +5,7 @@ import { triggerSuccessHaptic, openTelegramLink } from '../../services/telegram'
 import { EditUserModal } from '../layout/EditUserModal';
 
 export const HouseholdShareModal: React.FC = () => {
-  const { household, updateHousehold, users, resetCycle, factoryReset } = useApp();
+  const { household, updateHousehold, users, resetCycle, factoryReset, t } = useApp();
   const [copiedCard, setCopiedCard] = useState(false);
   const [nameInput, setNameInput] = useState(household.name || 'Наш дім');
   const [showEditUserModal, setShowEditUserModal] = useState(false);
@@ -204,7 +204,7 @@ export const HouseholdShareModal: React.FC = () => {
               className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-lg shadow-indigo-500/25 active:scale-95 transition-all"
             >
               <Send className="w-4 h-4" />
-              <span>Поділитись карткою у Telegram 📩</span>
+              <span>{t('share_card_btn')}</span>
             </button>
 
             <button
@@ -214,12 +214,12 @@ export const HouseholdShareModal: React.FC = () => {
               {copiedCard ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400">Текст запрошення скопійовано!</span>
+                  <span className="text-emerald-400">{t('invite_copied')}</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-3.5 h-3.5" />
-                  <span>Скопіювати текст запрошення 📋</span>
+                  <span>{t('copy_invite_btn')}</span>
                 </>
               )}
             </button>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Home, Calendar, Disc, Settings } from 'lucide-react';
 import { triggerHaptic } from '../../services/telegram';
+import { useApp } from '../../context/AppContext';
 
 export type TabType = 'dashboard' | 'calendar' | 'roulette' | 'settings';
 
@@ -10,11 +11,13 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
+  const { t } = useApp();
+
   const tabs = [
-    { id: 'dashboard' as TabType, label: 'Головна', icon: Home },
-    { id: 'calendar' as TabType, label: 'Календар', icon: Calendar },
-    { id: 'roulette' as TabType, label: 'Рулетка', icon: Disc, badge: 'Фінал' },
-    { id: 'settings' as TabType, label: 'Налаштування', icon: Settings },
+    { id: 'dashboard' as TabType, label: t('nav_dashboard'), icon: Home },
+    { id: 'calendar' as TabType, label: t('nav_calendar'), icon: Calendar },
+    { id: 'roulette' as TabType, label: t('nav_roulette'), icon: Disc, badge: t('badge_final') },
+    { id: 'settings' as TabType, label: t('nav_settings'), icon: Settings },
   ];
 
   const handleTabClick = (tab: TabType) => {

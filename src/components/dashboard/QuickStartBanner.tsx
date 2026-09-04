@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Check, ArrowRight, Heart } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const QuickStartBanner: React.FC = () => {
@@ -7,7 +7,7 @@ export const QuickStartBanner: React.FC = () => {
     return localStorage.getItem('duodone_welcome_dismissed') === 'true';
   });
 
-  const { activeUser, partnerUser } = useApp();
+  const { t } = useApp();
 
   if (dismissed) return null;
 
@@ -23,16 +23,15 @@ export const QuickStartBanner: React.FC = () => {
           🚀
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 flex-1">
           <div className="flex items-center space-x-1.5">
             <h3 className="font-extrabold text-white text-base tracking-tight">
-              Все готово! Вводити нічого не треба 🎉
+              {t('quick_start_title')}
             </h3>
           </div>
 
           <p className="text-xs text-slate-200 leading-relaxed font-medium">
-            Ми вже створили для вашої пари готові завдання (🧽 Миття посуду, 🗑️ Виніс сміття) та лічильники.
-            Просто тапай по кнопках, передавай хід і крути рулетку!
+            {t('quick_start_desc')}
           </p>
 
           <div className="pt-2 flex items-center space-x-2">
@@ -41,7 +40,7 @@ export const QuickStartBanner: React.FC = () => {
               className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center space-x-1.5 active:scale-95 transition-all"
             >
               <Check className="w-4 h-4 stroke-[3px]" />
-              <span>Супер, погнали! 🚀</span>
+              <span>{t('quick_start_btn')}</span>
             </button>
           </div>
         </div>

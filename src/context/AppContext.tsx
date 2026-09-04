@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, ReactNo
 import { User, Household, Task, Counter, ActivityLog, RouletteItem } from '../types';
 import { storage } from '../services/storage';
 import { triggerHaptic, triggerSuccessHaptic, initTelegramWebApp, getTelegramUser } from '../services/telegram';
+import { Language, getTranslation } from '../i18n/translations';
 
 interface AppContextType {
   users: User[];
@@ -13,6 +14,9 @@ interface AppContextType {
   activityLogs: ActivityLog[];
   rouletteItems: RouletteItem[];
   userXpMap: Record<string, number>;
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  t: (key: string, params?: Record<string, string | number>) => string;
   switchActiveUser: (userId: string) => void;
   updateUser: (userId: string, updates: Partial<User>) => void;
   updateHousehold: (updates: Partial<Household>) => void;
@@ -38,6 +42,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [counters, setCounters] = useState<Counter[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [rouletteItems, setRouletteItems] = useState<RouletteItem[]>([]);
+  const [language, setLanguageState] = useState<Language>(() => {
+    return (localStorage.getItem('duodone_language') as Language) || 'uk';
+  });
+
+  const handleSetLanguage = (lang: Language) => {
+    triggerHaptic('medium');
+    setLanguageState(lang);
+    localStorage.setItem('duodone_language', lang);
+  };
+
+  const t = (key: string, params?: Record<string, string | number>) => {
+    return getTranslation(language, key, params);
+  };
 
   const loadAllData = () => {
     let storedUsers = storage.getUsers();
@@ -231,8 +248,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const handleResetCycle = () => {
     triggerSuccessHaptic();
-    const nextDate = new Date();
-    nextDate.setMonth(nextDate.getMonth() + 1);
+    const days = household.cycle_days || (household.cycle_type === 'weekly' ? 7 : 30);
+    const nextDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
     storage.resetCycle(nextDate.toISOString());
 
     setHousehold(storage.getHousehold());
@@ -259,6 +276,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         activityLogs,
         rouletteItems,
         userXpMap,
+        language,
+        setLanguage: handleSetLanguage,
+        t,
         switchActiveUser,
         updateUser: handleUpdateUser,
         updateHousehold: handleUpdateHousehold,

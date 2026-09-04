@@ -15,6 +15,7 @@ import { DashboardConfigurator } from './components/settings/DashboardConfigurat
 import { HouseholdShareModal } from './components/settings/HouseholdShareModal';
 import { TaskManager } from './components/settings/TaskManager';
 import { RouletteManager } from './components/settings/RouletteManager';
+import { LanguageSettings } from './components/settings/LanguageSettings';
 import { CatSettings } from './components/settings/CatSettings';
 import { CatCounselor } from './components/common/CatCounselor';
 import { Task, Counter } from './types';
@@ -213,6 +214,7 @@ export const MainApp: React.FC = () => {
         {activeTab === 'roulette' && <RouletteWheel />}
         {activeTab === 'settings' && (
           <div className="space-y-4 pb-20 animate-fadeIn">
+            <LanguageSettings />
             <CatSettings />
             <DashboardConfigurator />
             <HouseholdShareModal />
