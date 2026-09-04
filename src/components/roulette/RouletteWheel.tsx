@@ -5,9 +5,10 @@ import { RotateCw, AlertTriangle, Gift, ArrowRight, Check, Clock } from 'lucide-
 import { triggerHaptic, triggerSuccessHaptic } from '../../services/telegram';
 import { CycleType } from '../../types';
 import { getUkrainianDaysText } from '../dashboard/CycleCountdownBanner';
+import { translateEntityTitle } from '../../i18n/translations';
 
 export const RouletteWheel: React.FC = () => {
-  const { users, userXpMap, rouletteItems, household, updateHousehold, resetCycle, t } = useApp();
+  const { users, userXpMap, rouletteItems, household, updateHousehold, resetCycle, language, t } = useApp();
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [winnerItem, setWinnerItem] = useState<string | null>(null);
@@ -107,7 +108,8 @@ export const RouletteWheel: React.FC = () => {
       ctx.shadowColor = 'rgba(0,0,0,0.8)';
       ctx.shadowBlur = 4;
 
-      const text = activeSectors[i].text;
+      const rawText = activeSectors[i].text;
+      const text = translateEntityTitle(rawText, language);
       const truncated = text.length > 18 ? text.substring(0, 16) + '...' : text;
       ctx.fillText(truncated, radius - 18, 4);
       ctx.restore();
@@ -165,7 +167,7 @@ export const RouletteWheel: React.FC = () => {
 
   useEffect(() => {
     drawWheel();
-  }, [activeSectors, selectedPoolType]);
+  }, [activeSectors, selectedPoolType, language]);
 
   const spinWheel = () => {
     if (spinning || activeSectors.length === 0) return;
@@ -343,12 +345,14 @@ export const RouletteWheel: React.FC = () => {
             <span className="text-[10px] uppercase font-black tracking-wider text-amber-400">
               {t('roulette_winner_choice')}
             </span>
-            <p className="font-extrabold text-white text-base mt-1 leading-snug">{winnerItem}</p>
+            <p className="font-extrabold text-white text-base mt-1 leading-snug">
+              {translateEntityTitle(winnerItem, language)}
+            </p>
           </div>
         )}
       </div>
 
-      {/* Cycle Configuration Selector Section ("коли бажаєте завершити цикл?") */}
+      {/* Cycle Configuration Selector Section */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
         <div className="flex items-center space-x-2 border-b border-slate-800 pb-2.5">
           <Clock className="w-4 h-4 text-amber-400" />
