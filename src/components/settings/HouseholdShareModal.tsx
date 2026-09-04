@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Share2, Copy, Check, QrCode, Users, Edit3, RotateCcw, RefreshCw, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Share2, Copy, Check, QrCode, Users, Edit3, RotateCcw, RefreshCw, AlertTriangle, ArrowRight, Send, Phone } from 'lucide-react';
 import { triggerSuccessHaptic } from '../../services/telegram';
 import { EditUserModal } from '../layout/EditUserModal';
 
 export const HouseholdShareModal: React.FC = () => {
-  const { household, updateHousehold, users, resetCycle, factoryReset } = useApp();
+  const { household, updateHousehold, users, resetCycle, factoryReset, updateUser } = useApp();
   const [copied, setCopied] = useState(false);
   const [nameInput, setNameInput] = useState(household.name || 'Наш дім');
+  const [partnerPhoneInput, setPartnerPhoneInput] = useState(users[1]?.phone_number || '');
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [showFactoryConfirm, setShowFactoryConfirm] = useState(false);
   const [showResetCycleConfirm, setShowResetCycleConfirm] = useState(false);
@@ -17,12 +18,24 @@ export const HouseholdShareModal: React.FC = () => {
   const inviteCode = household.invite_code || 'DUO7789';
 
   const inviteLink = `https://duodone-one.vercel.app/?invite=${inviteCode}&u1=${encodeURIComponent(user1Name)}&u2=${encodeURIComponent(user2Name)}`;
+  const botInviteLink = `https://t.me/DuoDone_bot?start=accept_${inviteCode}`;
 
   const copyLink = () => {
     navigator.clipboard.writeText(inviteLink);
     triggerSuccessHaptic();
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSendTelegramInvite = () => {
+    if (partnerPhoneInput.trim() && users[1]) {
+      updateUser(users[1].id, { phone_number: partnerPhoneInput.trim() });
+    }
+
+    const messageText = `🤝 Привіт! Запрошую тебе вести спільний побут у DuoDone! 🏓✨\n\nПрийняти запрошення та верифікуватися як мої партнер (${user2Name}):\n${botInviteLink}`;
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(botInviteLink)}&text=${encodeURIComponent(messageText)}`;
+
+    window.open(shareUrl, '_blank');
   };
 
   const handleSaveName = (e: React.FormEvent) => {
@@ -49,7 +62,7 @@ export const HouseholdShareModal: React.FC = () => {
           <Users className="w-5 h-5 text-indigo-400" />
           <div>
             <h3 className="font-bold text-white text-base">Налаштування Простору та Партнерів</h3>
-            <p className="text-xs text-slate-400">Імена партнерів, фото, назва дому та скидання</p>
+            <p className="text-xs text-slate-400">Прив'язка за номером телефону, ID та верифікація</p>
           </div>
         </div>
 
@@ -67,7 +80,7 @@ export const HouseholdShareModal: React.FC = () => {
             className="bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-indigo-500/30 flex items-center space-x-1 transition-all"
           >
             <Edit3 className="w-3.5 h-3.5" />
-            <span>Змінити імена/фото</span>
+            <span>Редагувати дані</span>
           </button>
         </div>
 
@@ -97,7 +110,6 @@ export const HouseholdShareModal: React.FC = () => {
           </h4>
 
           <div className="grid grid-cols-1 gap-2">
-            {/* Reset Cycle Button */}
             {!showResetCycleConfirm ? (
               <button
                 onClick={() => setShowResetCycleConfirm(true)}
@@ -131,7 +143,6 @@ export const HouseholdShareModal: React.FC = () => {
               </div>
             )}
 
-            {/* Factory Reset Button */}
             {!showFactoryConfirm ? (
               <button
                 onClick={() => setShowFactoryConfirm(true)}
@@ -167,49 +178,38 @@ export const HouseholdShareModal: React.FC = () => {
           </div>
         </div>
 
-        {/* Invite Partner Link */}
-        <div className="bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-slate-900 p-3.5 rounded-xl border border-indigo-500/30 space-y-2.5">
+        {/* Invite Partner via Phone & Telegram */}
+        <div className="bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-slate-900 p-3.5 rounded-xl border border-indigo-500/30 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold text-indigo-300 uppercase tracking-wider">
-              Запрошення партнера
+              Запрошення та Верифікація Партнера №2
             </span>
             <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-md font-mono font-bold">
               Код: {inviteCode}
             </span>
           </div>
 
-          <p className="text-xs text-slate-300">
-            Надішліть це посилання партнеру: у нього автоматично відкриються встановлені імена (<span className="text-indigo-300 font-semibold">{user1Name}</span> та <span className="text-pink-300 font-semibold">{user2Name}</span>).
-          </p>
-
-          <div className="flex space-x-2">
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold text-slate-300 flex items-center gap-1">
+              <Phone className="w-3.5 h-3.5 text-indigo-400" />
+              <span>№ телефону або ID партнера в Telegram:</span>
+            </label>
             <input
               type="text"
-              readOnly
-              value={inviteLink}
-              className="flex-1 bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-indigo-300 font-mono select-all focus:outline-none"
+              value={partnerPhoneInput}
+              onChange={(e) => setPartnerPhoneInput(e.target.value)}
+              placeholder="Наприклад: +380971234567 або @username"
+              className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
             />
-            <button
-              onClick={copyLink}
-              className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center space-x-1 transition-all ${
-                copied
-                  ? 'bg-emerald-500 text-slate-950'
-                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md'
-              }`}
-            >
-              {copied ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span>Скопійовано!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  <span>Копіювати</span>
-                </>
-              )}
-            </button>
           </div>
+
+          <button
+            onClick={handleSendTelegramInvite}
+            className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-lg shadow-indigo-500/25 active:scale-95 transition-all"
+          >
+            <Send className="w-4 h-4" />
+            <span>Надіслати картку запрошення у Telegram 📩</span>
+          </button>
         </div>
       </div>
 

@@ -20,7 +20,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const startParam = parts.length > 1 ? parts[1] : '';
         const appUrl = startParam ? `${WEB_APP_URL}?start=${encodeURIComponent(startParam)}` : WEB_APP_URL;
 
-        const welcomeMessage = `🏓 Привіт, ${firstName}! Вітаємо у DuoDone — офіційній зоні побутового миру та справедливості! 🤝\n\nБільше жодних токсичних суперечок на тему «хто сто років не виносив сміття» та «хто залишив чашку у раковині» 😅\n\n🔥 Що тут на вас чекає:\n• 🏓 **Симетричний Пінг-понг**: помив посуд ➔ тапнув ➔ хід перелетів до партнера.\n• ⚖️ **XP Балансир**: заробляй бали за справи та перетягуй канат на свій бік.\n• 🎡 **Рулетка Долі**: наприкінці місяця той, хто програв, миє взуття або робить масаж 😈\n\nТисни кнопку нижче і розрулюй побут за 5 секунд! 🚀`;
+        const isAccept = startParam.startsWith('accept_');
+        const welcomeMessage = isAccept
+          ? `🤝 **Запрошення прийнято!**\n\nВітаємо у спільному просторі DuoDone! 🎉\nВи верифіковані як **Партнер №2**.\n\nТисни кнопку нижче, щоб увійти та розпочати спільний побут без суперечок! 🚀`
+          : `🏓 Привіт, ${firstName}! Вітаємо у DuoDone — офіційній зоні побутового миру та справедливості! 🤝\n\nБільше жодних токсичних суперечок на тему «хто сто років не виносив сміття» та «хто залишив чашку у раковині» 😅\n\n🔥 Що тут на вас чекає:\n• 🏓 **Симетричний Пінг-понг**: помив посуд ➔ тапнув ➔ хід перелетів до партнера.\n• ⚖️ **XP Балансир**: заробляй бали за справи та перетягуй канат на свій бік.\n• 🎡 **Рулетка Долі**: наприкінці місяця той, хто програв, миє взуття або робить масаж 😈\n\nТисни кнопку нижче і розрулюй побут за 5 секунд! 🚀`;
 
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           method: 'POST',
@@ -33,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               inline_keyboard: [
                 [
                   {
-                    text: '🏓 Відкрити DuoDone Mini App 🚀',
+                    text: isAccept ? '✅ Прийняти та відкрити DuoDone 🚀' : '🏓 Відкрити DuoDone Mini App 🚀',
                     web_app: { url: appUrl },
                   },
                 ],

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Task } from '../../types';
 import { useApp } from '../../context/AppContext';
-import { Clock, Camera, CheckCircle2, ArrowRightLeft, AlertCircle } from 'lucide-react';
+import { Clock, Camera, CheckCircle2, Lock } from 'lucide-react';
 
 interface PingPongCardProps {
   task: Task;
@@ -10,8 +10,7 @@ interface PingPongCardProps {
 }
 
 export const PingPongCard: React.FC<PingPongCardProps> = ({ task, onActionRequest, onOpenDetails }) => {
-  const { users, activeUser, completeTask } = useApp();
-  const [showOutOfTurnConfirm, setShowOutOfTurnConfirm] = useState(false);
+  const { users, activeUser } = useApp();
 
   const turnUser = users.find((u) => u.id === task.current_turn_user_id) || users[0];
   const isMyTurn = activeUser.id === task.current_turn_user_id;
@@ -30,14 +29,7 @@ export const PingPongCard: React.FC<PingPongCardProps> = ({ task, onActionReques
   const handleButtonClick = () => {
     if (isMyTurn) {
       onActionRequest(task, false);
-    } else {
-      setShowOutOfTurnConfirm(true);
     }
-  };
-
-  const confirmOutOfTurn = () => {
-    setShowOutOfTurnConfirm(false);
-    onActionRequest(task, true);
   };
 
   return (
@@ -68,7 +60,7 @@ export const PingPongCard: React.FC<PingPongCardProps> = ({ task, onActionReques
             className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition-all ${
               isMyTurn
                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 animate-pulse'
-                : 'bg-slate-700/50 text-slate-400 border-slate-600/40'
+                : 'bg-slate-800 text-slate-400 border-slate-700'
             }`}
           >
             <img
@@ -88,48 +80,27 @@ export const PingPongCard: React.FC<PingPongCardProps> = ({ task, onActionReques
 
       {/* Action area */}
       <div className="mt-4 pt-3 border-t border-slate-700/50">
-        {!showOutOfTurnConfirm ? (
-          <button
-            onClick={handleButtonClick}
-            className={`w-full py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all duration-200 active:scale-[0.98] shadow-md ${
-              isMyTurn
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-500/20 hover:from-emerald-400 hover:to-teal-500'
-                : 'bg-slate-700/70 hover:bg-slate-700 text-slate-300 border border-slate-600/50'
-            }`}
-          >
-            {task.photo_required ? (
-              <Camera className="w-4 h-4" />
-            ) : (
-              <CheckCircle2 className="w-4 h-4" />
-            )}
-            <span>
-              {isMyTurn
-                ? 'Зроблено! Передати хід 🏓'
-                : 'Зробити позачергово'}
-            </span>
-          </button>
-        ) : (
-          <div className="bg-amber-950/40 border border-amber-500/40 rounded-xl p-2.5 text-center animate-fadeIn">
-            <p className="text-xs text-amber-200 font-medium flex items-center justify-center gap-1 mb-2">
-              <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-              Зараз не твоя черга. Все одно зарахувати?
-            </p>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setShowOutOfTurnConfirm(false)}
-                className="flex-1 py-1.5 rounded-lg bg-slate-700 text-slate-300 text-xs font-semibold hover:bg-slate-600"
-              >
-                Скасувати
-              </button>
-              <button
-                onClick={confirmOutOfTurn}
-                className="flex-1 py-1.5 rounded-lg bg-amber-500 text-slate-950 text-xs font-bold hover:bg-amber-400"
-              >
-                Так, зарахувати
-              </button>
-            </div>
-          </div>
-        )}
+        <button
+          onClick={handleButtonClick}
+          disabled={!isMyTurn}
+          className={`w-full py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all duration-200 shadow-md ${
+            isMyTurn
+              ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-emerald-500/20 active:scale-[0.98]'
+              : 'bg-slate-800/80 text-slate-500 border border-slate-700/60 cursor-not-allowed opacity-80'
+          }`}
+        >
+          {isMyTurn ? (
+            <>
+              {task.photo_required ? <Camera className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+              <span>Зроблено! Передати хід 🏓</span>
+            </>
+          ) : (
+            <>
+              <Lock className="w-3.5 h-3.5 text-slate-500" />
+              <span>Зараз хід партнера ({turnUser.first_name})</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

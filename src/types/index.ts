@@ -9,6 +9,7 @@ export interface User {
   id: string;
   telegram_id?: number | string | null;
   telegram_username?: string | null;
+  phone_number?: string | null;
   first_name: string;
   avatar_url?: string;
   role_title?: string; // e.g. "Він", "Вона", "Партнер 1"
