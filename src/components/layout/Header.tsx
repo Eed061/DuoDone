@@ -4,7 +4,7 @@ import { Users, Edit3 } from 'lucide-react';
 import { EditUserModal } from './EditUserModal';
 
 export const Header: React.FC = () => {
-  const { household, users, activeUser, switchActiveUser } = useApp();
+  const { household, activeUser, partnerUser } = useApp();
   const [showEditModal, setShowEditModal] = useState(false);
 
   return (
@@ -30,31 +30,43 @@ export const Header: React.FC = () => {
             </div>
           </div>
 
-          {/* Right: Partner Role Switcher & Edit Names button */}
-          <div className="flex items-center space-x-1 bg-slate-800/90 p-1 rounded-xl border border-slate-700/60">
-            {users.map((u) => {
-              const isActive = u.id === activeUser.id;
-              return (
-                <button
-                  key={u.id}
-                  onClick={() => switchActiveUser(u.id)}
-                  className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all duration-200 ${
-                    isActive
-                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md scale-105'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                  title={`Грати як ${u.first_name}`}
-                >
-                  <span>{u.id === users[0]?.id ? '👨' : '👩'}</span>
-                  <span>{u.first_name}</span>
-                </button>
-              );
-            })}
+          {/* Right: Non-clickable Pair Status Display (Active User bold + green online dot, Partner secondary) */}
+          <div className="flex items-center space-x-2 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800 shadow-inner">
+            {/* Active User (Bold + Green Online Dot) */}
+            <div className="flex items-center space-x-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <img
+                src={activeUser.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg?seed=Active'}
+                alt={activeUser.first_name}
+                className="w-5 h-5 rounded-full object-cover border border-emerald-400/60"
+              />
+              <span className="font-black text-white text-xs tracking-tight">
+                {activeUser.first_name}
+              </span>
+            </div>
 
+            <span className="text-slate-600 text-xs font-light">|</span>
+
+            {/* Partner User (Clean secondary) */}
+            <div className="flex items-center space-x-1">
+              <img
+                src={partnerUser.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg?seed=Partner'}
+                alt={partnerUser.first_name}
+                className="w-4 h-4 rounded-full object-cover opacity-80"
+              />
+              <span className="font-semibold text-slate-400 text-xs">
+                {partnerUser.first_name}
+              </span>
+            </div>
+
+            {/* Edit Button */}
             <button
               onClick={() => setShowEditModal(true)}
-              className="p-1 text-slate-400 hover:text-indigo-300 rounded-lg hover:bg-slate-700/60 transition-colors"
-              title="Перейменувати партнерів"
+              className="p-1 text-slate-400 hover:text-indigo-300 rounded-lg hover:bg-slate-800 transition-colors ml-1"
+              title="Налаштування імен та фото"
             >
               <Edit3 className="w-3.5 h-3.5" />
             </button>
