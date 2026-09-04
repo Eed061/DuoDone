@@ -43,7 +43,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     let storedUsers = storage.getUsers();
     const telegramUser = getTelegramUser();
 
-    // 100% Precise Telegram User Matching Logic
+    // Check URL parameters and Telegram WebApp start_param
+    const urlParams = new URLSearchParams(window.location.search);
+    const inviteParam = urlParams.get('invite') || urlParams.get('start');
+    const roleParam = urlParams.get('role');
+    const tgStartParam = (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param;
+    const fullStart = inviteParam || tgStartParam || '';
+
+    const isInvitedPartner = fullStart.includes('accept') || fullStart.includes('join') || roleParam === 'p2';
+
     if (telegramUser && storedUsers.length >= 2) {
       const currentTgId = telegramUser.id;
       const currentTgUsername = telegramUser.username ? telegramUser.username.replace('@', '').toLowerCase() : '';
@@ -54,8 +62,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const u2TgId = storedUsers[1].telegram_id;
       const u2TgUsername = storedUsers[1].telegram_username ? String(storedUsers[1].telegram_username).replace('@', '').toLowerCase() : '';
 
-      // Match against Partner 2 (user 1 index)
+      // Check Partner 2 match or Invite Link
       if (
+        isInvitedPartner ||
         (u2TgId && String(u2TgId) === String(currentTgId)) ||
         (u2TgUsername && currentTgUsername && u2TgUsername === currentTgUsername)
       ) {
@@ -63,33 +72,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (telegramUser.username) storedUsers[1].telegram_username = telegramUser.username;
         storage.updateUser(storedUsers[1].id, storedUsers[1]);
         storage.setActiveUserId(storedUsers[1].id);
+        localStorage.setItem('duodone_user_role', 'p2');
       }
-      // Match against Partner 1 (user 0 index)
+      // Check Partner 1 match or Creator device
       else if (
         (u1TgId && String(u1TgId) === String(currentTgId)) ||
-        (u1TgUsername && currentTgUsername && u1TgUsername === currentTgUsername)
+        (u1TgUsername && currentTgUsername && u1TgUsername === currentTgUsername) ||
+        !isInvitedPartner
       ) {
         storedUsers[0].telegram_id = currentTgId;
         if (telegramUser.username) storedUsers[0].telegram_username = telegramUser.username;
         storage.updateUser(storedUsers[0].id, storedUsers[0]);
         storage.setActiveUserId(storedUsers[0].id);
+        localStorage.setItem('duodone_user_role', 'p1');
       }
-      // Auto-bind creator if Partner 1 has no TG info yet
-      else if (!u1TgId && !u1TgUsername) {
-        storedUsers[0].telegram_id = currentTgId;
-        if (telegramUser.username) storedUsers[0].telegram_username = telegramUser.username;
-        storage.updateUser(storedUsers[0].id, storedUsers[0]);
-        storage.setActiveUserId(storedUsers[0].id);
-      }
+    } else if (isInvitedPartner && storedUsers[1]) {
+      storage.setActiveUserId(storedUsers[1].id);
+      localStorage.setItem('duodone_user_role', 'p2');
     }
 
-    // Check URL parameters and Telegram WebApp start_param
-    const urlParams = new URLSearchParams(window.location.search);
-    const inviteParam = urlParams.get('invite') || urlParams.get('start');
-    const tgStartParam = (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param;
-    const fullStart = inviteParam || tgStartParam || '';
-
-    // Handle invite parameter if joining via link
+    // Process custom user names from invite link if passed
     if (fullStart) {
       const u1Name = urlParams.get('u1');
       const u2Name = urlParams.get('u2');
@@ -99,10 +101,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       if (storedUsers[0]) storage.updateUser(storedUsers[0].id, storedUsers[0]);
       if (storedUsers[1]) storage.updateUser(storedUsers[1].id, storedUsers[1]);
+    }
 
-      if (storedUsers[1] && (!localStorage.getItem('duodone_active_user_id') || fullStart.includes('join'))) {
-        storage.setActiveUserId(storedUsers[1].id);
-      }
+    // Honor explicitly saved user role on this device
+    const savedRole = localStorage.getItem('duodone_user_role');
+    if (savedRole === 'p2' && storedUsers[1]) {
+      storage.setActiveUserId(storedUsers[1].id);
+    } else if (savedRole === 'p1' && storedUsers[0]) {
+      storage.setActiveUserId(storedUsers[0].id);
     }
 
     setUsers(storage.getUsers());
@@ -149,6 +155,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     triggerHaptic('light');
     setActiveUserId(userId);
     storage.setActiveUserId(userId);
+    const role = userId === users[1]?.id ? 'p2' : 'p1';
+    localStorage.setItem('duodone_user_role', role);
   };
 
   const handleUpdateUser = (userId: string, updates: Partial<User>) => {
@@ -235,6 +243,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const handleFactoryReset = () => {
     triggerSuccessHaptic();
     storage.factoryReset();
+    localStorage.removeItem('duodone_user_role');
     loadAllData();
   };
 

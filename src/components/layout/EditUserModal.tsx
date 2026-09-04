@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, Check, Edit3, Camera, User as UserIcon, Loader2, AtSign } from 'lucide-react';
+import { X, Check, Edit3, Camera, User as UserIcon, Loader2, Smartphone } from 'lucide-react';
 import { compressImageFile } from '../../services/imageCompression';
 import { getTelegramUser } from '../../services/telegram';
 
@@ -9,7 +9,7 @@ interface EditUserModalProps {
 }
 
 export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
-  const { users, updateUser } = useApp();
+  const { users, updateUser, activeUser, switchActiveUser } = useApp();
   const tgUser = getTelegramUser();
 
   const user1 = users[0] || { id: 'u1', first_name: 'Партнер 1' };
@@ -83,7 +83,41 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
           </div>
           <div>
             <h3 className="font-extrabold text-white text-base">Імена, Фото та TG Партнерів</h3>
-            <p className="text-xs text-slate-400">Вкажіть імена та TG @username для 100% прив'язки</p>
+            <p className="text-xs text-slate-400">Вкажіть імена та TG @username для прив'язки</p>
+          </div>
+        </div>
+
+        {/* Current Device User Role Selector */}
+        <div className="bg-slate-950 p-3 rounded-xl border border-slate-700/80 space-y-2">
+          <label className="text-[11px] font-bold text-slate-300 flex items-center gap-1">
+            <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Хто ви на цьому пристрої:</span>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => switchActiveUser(user1.id)}
+              className={`py-2 px-2.5 rounded-xl text-xs font-extrabold border transition-all flex items-center justify-center space-x-1 ${
+                activeUser.id === user1.id
+                  ? 'bg-indigo-600 text-white border-indigo-400 shadow-md'
+                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+              }`}
+            >
+              <span>👨</span>
+              <span className="truncate">{name1 || 'Партнер 1'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => switchActiveUser(user2.id)}
+              className={`py-2 px-2.5 rounded-xl text-xs font-extrabold border transition-all flex items-center justify-center space-x-1 ${
+                activeUser.id === user2.id
+                  ? 'bg-pink-600 text-white border-pink-400 shadow-md'
+                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+              }`}
+            >
+              <span>👩</span>
+              <span className="truncate">{name2 || 'Партнер 2'}</span>
+            </button>
           </div>
         </div>
 
@@ -138,7 +172,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
                   type="text"
                   value={name1}
                   onChange={(e) => setName1(e.target.value)}
-                  placeholder="Ім'я партнера 1 (напр. Діма)"
+                  placeholder="Ім'я партнера 1"
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                   required
                 />
@@ -148,7 +182,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
                     type="text"
                     value={tgUsername1}
                     onChange={(e) => setTgUsername1(e.target.value)}
-                    placeholder="Telegram username (напр. dima_ua)"
+                    placeholder="Telegram username"
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-7 pr-3 py-1.5 text-xs text-indigo-300 font-mono placeholder-slate-600 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
@@ -192,7 +226,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
                   type="text"
                   value={name2}
                   onChange={(e) => setName2(e.target.value)}
-                  placeholder="Ім'я партнера 2 (напр. Віка)"
+                  placeholder="Ім'я партнера 2"
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                   required
                 />
@@ -202,7 +236,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
                     type="text"
                     value={tgUsername2}
                     onChange={(e) => setTgUsername2(e.target.value)}
-                    placeholder="Telegram username (напр. vika_ua)"
+                    placeholder="Telegram username"
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-7 pr-3 py-1.5 text-xs text-pink-300 font-mono placeholder-slate-600 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
