@@ -41,6 +41,47 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const loadAllData = () => {
     let storedUsers = storage.getUsers();
+    const telegramUser = getTelegramUser();
+
+    // 100% Precise Telegram User Matching Logic
+    if (telegramUser && storedUsers.length >= 2) {
+      const currentTgId = telegramUser.id;
+      const currentTgUsername = telegramUser.username ? telegramUser.username.replace('@', '').toLowerCase() : '';
+
+      const u1TgId = storedUsers[0].telegram_id;
+      const u1TgUsername = storedUsers[0].telegram_username ? String(storedUsers[0].telegram_username).replace('@', '').toLowerCase() : '';
+
+      const u2TgId = storedUsers[1].telegram_id;
+      const u2TgUsername = storedUsers[1].telegram_username ? String(storedUsers[1].telegram_username).replace('@', '').toLowerCase() : '';
+
+      // Match against Partner 2 (user 1 index)
+      if (
+        (u2TgId && String(u2TgId) === String(currentTgId)) ||
+        (u2TgUsername && currentTgUsername && u2TgUsername === currentTgUsername)
+      ) {
+        storedUsers[1].telegram_id = currentTgId;
+        if (telegramUser.username) storedUsers[1].telegram_username = telegramUser.username;
+        storage.updateUser(storedUsers[1].id, storedUsers[1]);
+        storage.setActiveUserId(storedUsers[1].id);
+      }
+      // Match against Partner 1 (user 0 index)
+      else if (
+        (u1TgId && String(u1TgId) === String(currentTgId)) ||
+        (u1TgUsername && currentTgUsername && u1TgUsername === currentTgUsername)
+      ) {
+        storedUsers[0].telegram_id = currentTgId;
+        if (telegramUser.username) storedUsers[0].telegram_username = telegramUser.username;
+        storage.updateUser(storedUsers[0].id, storedUsers[0]);
+        storage.setActiveUserId(storedUsers[0].id);
+      }
+      // Auto-bind creator if Partner 1 has no TG info yet
+      else if (!u1TgId && !u1TgUsername) {
+        storedUsers[0].telegram_id = currentTgId;
+        if (telegramUser.username) storedUsers[0].telegram_username = telegramUser.username;
+        storage.updateUser(storedUsers[0].id, storedUsers[0]);
+        storage.setActiveUserId(storedUsers[0].id);
+      }
+    }
 
     // Check URL parameters and Telegram WebApp start_param
     const urlParams = new URLSearchParams(window.location.search);
@@ -53,17 +94,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const u1Name = urlParams.get('u1');
       const u2Name = urlParams.get('u2');
 
-      if (u1Name && storedUsers[0]) {
-        storedUsers[0].first_name = u1Name;
-      }
-      if (u2Name && storedUsers[1]) {
-        storedUsers[1].first_name = u2Name;
-      }
+      if (u1Name && storedUsers[0]) storedUsers[0].first_name = u1Name;
+      if (u2Name && storedUsers[1]) storedUsers[1].first_name = u2Name;
 
       if (storedUsers[0]) storage.updateUser(storedUsers[0].id, storedUsers[0]);
       if (storedUsers[1]) storage.updateUser(storedUsers[1].id, storedUsers[1]);
 
-      // If joining via partner link, switch active user on this device to Partner 2
       if (storedUsers[1] && (!localStorage.getItem('duodone_active_user_id') || fullStart.includes('join'))) {
         storage.setActiveUserId(storedUsers[1].id);
       }
