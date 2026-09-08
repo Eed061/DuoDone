@@ -110,9 +110,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     let extractedCode = '';
     if (fullStart) {
       const match = fullStart.match(/([A-Z0-9]{3,4}-?[A-Z0-9]{3,4})/i);
-      if (match) extractedCode = match[1];
-      else if (fullStart.includes('_')) extractedCode = fullStart.split('_')[1];
-      else extractedCode = fullStart;
+      if (match) extractedCode = match[1].toUpperCase();
+      else if (fullStart.includes('_')) extractedCode = fullStart.split('_')[1].toUpperCase();
+      else extractedCode = fullStart.toUpperCase();
     }
 
     const isInvitedPartner = fullStart.includes('accept') || fullStart.includes('join') || roleParam === 'p2' || Boolean(extractedCode);
@@ -121,29 +121,64 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const currentTgId = telegramUser?.id ? String(telegramUser.id) : '';
     const currentTgUsername = telegramUser?.username ? String(telegramUser.username).replace('@', '').toLowerCase() : '';
 
-    // If invited by code, check pair access control before loading
+    // ─── FLOW A: User arrived via invite link ───────────────────────────────
     if (extractedCode) {
-      const access = await cloudSync.checkSpaceAccess(extractedCode, activeUId, currentTgId, currentTgUsername);
-      if (access.allowed) {
-        const cloudData = await cloudSync.fetchHouseholdByCode(extractedCode, activeUId, currentTgId, currentTgUsername);
-        if (cloudData && cloudData.household) {
+      // Always try to fetch cloud data - no pre-emptive block on invited partner
+      const cloudData = await cloudSync.fetchHouseholdByCode(extractedCode, activeUId, currentTgId, currentTgUsername);
+
+      if (cloudData && cloudData.household) {
+        const cloudUsers: User[] = cloudData.users ? [...cloudData.users] : [];
+        const u1 = cloudUsers[0];
+        const u2 = cloudUsers[1];
+        const u1TgId = u1?.telegram_id ? String(u1.telegram_id) : '';
+        const u1TgName = u1?.telegram_username ? String(u1.telegram_username).replace('@', '').toLowerCase() : '';
+        const u2TgId = u2?.telegram_id ? String(u2.telegram_id) : '';
+        const matchU1 = (u1TgId && u1TgId === currentTgId) || (u1TgName && currentTgUsername && u1TgName === currentTgUsername);
+        const matchU2 = u2TgId && u2TgId === currentTgId;
+
+        if (matchU1) {
+          storedUsers = cloudUsers;
           storedHousehold = cloudData.household;
-          storedUsers = cloudData.users || storedUsers;
-          storage.saveHousehold(storedHousehold);
-          storage.saveUsers(storedUsers);
-          if (cloudData.tasks) storage.saveTasks(cloudData.tasks);
-          if (cloudData.counters) storage.saveCounters(cloudData.counters);
-          if (cloudData.activityLogs) storage.saveActivityLogs(cloudData.activityLogs);
-          if (cloudData.rouletteItems) storage.saveRouletteItems(cloudData.rouletteItems);
+          storage.setActiveUserId(u1.id);
+          localStorage.setItem('duodone_user_role', 'p1');
+        } else if (matchU2) {
+          storedUsers = cloudUsers;
+          storedHousehold = cloudData.household;
+          storage.setActiveUserId(u2!.id);
+          localStorage.setItem('duodone_user_role', 'p2');
+        } else if (u2 && (u2.is_placeholder || !u2TgId)) {
+          // Open slot — join as Partner 2
+          cloudUsers[1] = {
+            ...u2,
+            telegram_id: telegramUser?.id,
+            telegram_username: telegramUser?.username || u2.telegram_username,
+            first_name: u2.is_placeholder ? (telegramUser?.first_name || 'Партнер 2') : u2.first_name,
+            is_placeholder: false,
+          };
+          storedUsers = cloudUsers;
+          storedHousehold = cloudData.household;
+          storage.setActiveUserId(cloudUsers[1].id);
+          localStorage.setItem('duodone_user_role', 'p2');
         } else {
-          // Cloud data not fetched synchronously yet, but access is allowed -> bind invite code to current space
+          // Space is full and user is not a member → create own isolated space
+          storedHousehold = storage.createNewHouseholdSpace(`${telegramUser?.first_name || 'Моя'} пара`, undefined, telegramUser || undefined);
+          storedUsers = storage.getUsers();
+          storage.setActiveUserId(storedUsers[0].id);
+          localStorage.setItem('duodone_user_role', 'p1');
+        }
+
+        storage.saveHousehold(storedHousehold);
+        storage.saveUsers(storedUsers);
+        if (cloudData.tasks) storage.saveTasks(cloudData.tasks);
+        if (cloudData.counters) storage.saveCounters(cloudData.counters);
+        if (cloudData.activityLogs) storage.saveActivityLogs(cloudData.activityLogs);
+        if (cloudData.rouletteItems) storage.saveRouletteItems(cloudData.rouletteItems);
+      } else {
+        // No cloud data available yet — store invite_code locally, fall through to Flow B
+        if (storedHousehold.invite_code !== extractedCode) {
           storedHousehold.invite_code = extractedCode;
           storage.saveHousehold(storedHousehold);
         }
-      } else {
-        // Access denied ONLY if space is already full (2/2 real members)
-        storedHousehold = storage.createNewHouseholdSpace(`${telegramUser?.first_name || 'Моя'} пара`, undefined, telegramUser || undefined);
-        storedUsers = storage.getUsers();
       }
     }
 
