@@ -519,6 +519,11 @@ export const translations: Record<Language, Record<string, string>> = {
     cycle_loser_msg: 'Нажаль, цього циклу удача була на боці партнера...',
     cycle_tie_msg: 'Нічия в балах! Рівна боротьба 🤝',
     go_to_roulette: 'Перейти до Рулетки 🎡',
+    cycle_winner_sub: 'Час крутнути Колесо Фортуни для отримання заслуженого призу! 🎁',
+    cycle_loser_sub: 'Час крутнути колесо штрафів та виконати покарання! ⚡',
+    cycle_tie_sub: 'Обоє заслуговуєте на нагороду! Крутіть рулетку 🎡',
+    cycle_btn_prizes: 'Перейти до Призів 🎁',
+    cycle_btn_penalties: 'Крутити Рулетку Штрафів ⚡',
 
     // Balancer Card
     balancer_title: 'Балансир Балів',
@@ -733,6 +738,11 @@ export const translations: Record<Language, Record<string, string>> = {
     cycle_loser_msg: 'Unfortunately, luck was on your partner\'s side...',
     cycle_tie_msg: 'It\'s a tie! Great match 🤝',
     go_to_roulette: 'Go to Roulette 🎡',
+    cycle_winner_sub: 'Time to spin the Wheel of Fortune for your reward! 🎁',
+    cycle_loser_sub: 'Time to spin the penalties wheel and perform your penalty! ⚡',
+    cycle_tie_sub: 'Both deserve a reward! Spin the roulette 🎡',
+    cycle_btn_prizes: 'Go to Rewards 🎁',
+    cycle_btn_penalties: 'Spin Penalties Wheel ⚡',
 
     // Balancer Card
     balancer_title: 'Score Balancer',
@@ -947,6 +957,11 @@ export const translations: Record<Language, Record<string, string>> = {
     cycle_loser_msg: 'Niestety, tym razem szczęście sprzyjało partnerowi...',
     cycle_tie_msg: 'Remis w punktach! Równa walka 🤝',
     go_to_roulette: 'Przejdź do Ruletki 🎡',
+    cycle_winner_sub: 'Czas zakręcić Kołem Fortuny po swoją nagrodę! 🎁',
+    cycle_loser_sub: 'Czas zakręcić kołem kar i wykonać zadanie! ⚡',
+    cycle_tie_sub: 'Oboje zasługujecie na nagrodę! Zakręćcie ruletką 🎡',
+    cycle_btn_prizes: 'Przejdź do Nagród 🎁',
+    cycle_btn_penalties: 'Zakręć Ruletką Kar ⚡',
 
     // Balancer Card
     balancer_title: 'Balancer Punktów',
@@ -1161,6 +1176,11 @@ export const translations: Record<Language, Record<string, string>> = {
     cycle_loser_msg: 'Leider war das Glück diesmal beim Partner...',
     cycle_tie_msg: 'Unentschieden! Toller Kampf 🤝',
     go_to_roulette: 'Zum Roulette 🎡',
+    cycle_winner_sub: 'Zeit, das Glücksrad für deine Belohnung zu drehen! 🎁',
+    cycle_loser_sub: 'Zeit, das Strafrad zu drehen und die Strafe zu erfüllen! ⚡',
+    cycle_tie_sub: 'Beide verdienen eine Belohnung! Dreht das Roulette 🎡',
+    cycle_btn_prizes: 'Zu den Belohnungen 🎁',
+    cycle_btn_penalties: 'Strafen-Roulette drehen ⚡',
 
     // Balancer Card
     balancer_title: 'Punkte-Balancer',
@@ -1375,6 +1395,11 @@ export const translations: Record<Language, Record<string, string>> = {
     cycle_loser_msg: 'Lamentablemente, la suerte estuvo del lado de tu pareja...',
     cycle_tie_msg: '¡Empate! Gran combate 🤝',
     go_to_roulette: 'Ir a la Ruleta 🎡',
+    cycle_winner_sub: '¡Hora de girar la Ruleta de la Fortuna para tu premio! 🎁',
+    cycle_loser_sub: '¡Hora de girar la ruleta de penalizaciones y cumplir tu castigo! ⚡',
+    cycle_tie_sub: '¡Ambos merecen un premio! Giren la ruleta 🎡',
+    cycle_btn_prizes: 'Ir a Premios 🎁',
+    cycle_btn_penalties: 'Girar Ruleta de Penalizaciones ⚡',
 
     // Balancer Card
     balancer_title: 'Balanceador de Puntos',
@@ -1589,6 +1614,11 @@ export const translations: Record<Language, Record<string, string>> = {
     cycle_loser_msg: 'Malheureusement, la chance était du côté de votre partenaire...',
     cycle_tie_msg: 'Égalité parfaite ! Beau match 🤝',
     go_to_roulette: 'Aller à la Roulette 🎡',
+    cycle_winner_sub: 'Temps de faire tourner la Roue de la Fortune pour votre récompense ! 🎁',
+    cycle_loser_sub: 'Temps de faire tourner la roue des pénalités ! ⚡',
+    cycle_tie_sub: 'Tous deux méritent une récompense ! Tournez la roulette 🎡',
+    cycle_btn_prizes: 'Aller aux Récompenses 🎁',
+    cycle_btn_penalties: 'Tourner la Roulette des Pénalités ⚡',
 
     // Balancer Card
     balancer_title: 'Équilibreur de Points',
@@ -1803,6 +1833,11 @@ export const translations: Record<Language, Record<string, string>> = {
     cycle_loser_msg: 'К сожалению, в этом цикле удача была на стороне партнера...',
     cycle_tie_msg: 'Ничья по баллам! Равная борьба 🤝',
     go_to_roulette: 'Перейти к Рулетке 🎡',
+    cycle_winner_sub: 'Время крутануть Колесо Фортуны для получения заслуженного приза! 🎁',
+    cycle_loser_sub: 'Время крутануть колесо штрафов и выполнить наказание! ⚡',
+    cycle_tie_sub: 'Оба заслуживают награды! Крутите рулетку 🎡',
+    cycle_btn_prizes: 'Перейти к Призам 🎁',
+    cycle_btn_penalties: 'Крутить Рулетку Штрафов ⚡',
 
     // Balancer Card
     balancer_title: 'Балансир Баллов',

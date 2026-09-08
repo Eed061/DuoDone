@@ -4,7 +4,7 @@ import { Timer, Trophy, Sparkles, ArrowRight, Gift } from 'lucide-react';
 import { triggerHaptic } from '../../services/telegram';
 
 interface CycleCountdownBannerProps {
-  onOpenRoulette: () => void;
+  onOpenRoulette: (poolType: 'reward' | 'penalty') => void;
 }
 
 export const getUkrainianDaysText = (days: number): string => {
@@ -18,7 +18,7 @@ export const getUkrainianDaysText = (days: number): string => {
 };
 
 export const CycleCountdownBanner: React.FC<CycleCountdownBannerProps> = ({ onOpenRoulette }) => {
-  const { household, activeUser, partnerUser, userXpMap } = useApp();
+  const { household, activeUser, partnerUser, userXpMap, t } = useApp();
 
   const cycleType = household.cycle_type || 'monthly';
   if (cycleType === 'off') return null;
@@ -35,7 +35,11 @@ export const CycleCountdownBanner: React.FC<CycleCountdownBannerProps> = ({ onOp
 
   const handleClick = () => {
     triggerHaptic('medium');
-    onOpenRoulette();
+    if (isWinner || isTie) {
+      onOpenRoulette('reward');
+    } else {
+      onOpenRoulette('penalty');
+    }
   };
 
   // Cycle finished state
@@ -52,32 +56,45 @@ export const CycleCountdownBanner: React.FC<CycleCountdownBannerProps> = ({ onOp
           <div className="space-y-1.5 flex-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] uppercase font-black tracking-widest text-amber-400">
-                Раунд Завершено! 🏆
+                {t('cycle_finished_title')}
               </span>
             </div>
 
             <h3 className="font-extrabold text-white text-sm leading-snug">
               {isWinner
-                ? 'Ви чудово попрацювали цього циклу! 🌟'
+                ? t('cycle_winner_msg')
                 : isTie
-                ? 'Нічия в балах! Рівна боротьба 🤝'
-                : 'Нажаль, цього циклу удача була на боці партнера...'}
+                ? t('cycle_tie_msg')
+                : t('cycle_loser_msg')}
             </h3>
 
             <p className="text-xs text-slate-300 font-medium">
               {isWinner
-                ? 'Час крутнути Колесо Фортуни для отримання заслуженого призу! 🎁'
+                ? t('cycle_winner_sub')
                 : isTie
-                ? 'Обоє заслуговуєте на нагороду! Крутіть рулетку 🎡'
-                : 'Крутніть колесо покарання або привітайте переможця ⚡'}
+                ? t('cycle_tie_sub')
+                : t('cycle_loser_sub')}
             </p>
 
             <button
               onClick={handleClick}
-              className="mt-2.5 w-full py-2.5 px-4 bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/25 flex items-center justify-center space-x-2 active:scale-95 transition-all"
+              className={`mt-2.5 w-full py-2.5 px-4 font-black text-xs rounded-xl shadow-lg flex items-center justify-center space-x-2 active:scale-95 transition-all ${
+                isWinner || isTie
+                  ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 shadow-amber-500/25'
+                  : 'bg-gradient-to-r from-rose-500 via-pink-600 to-rose-600 hover:from-rose-400 hover:to-pink-500 text-white shadow-rose-500/30'
+              }`}
             >
-              <Gift className="w-4 h-4" />
-              <span>Перейти до Рулетки 🎡</span>
+              {isWinner || isTie ? (
+                <>
+                  <Gift className="w-4 h-4" />
+                  <span>{t('cycle_btn_prizes')}</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>{t('cycle_btn_penalties')}</span>
+                </>
+              )}
             </button>
           </div>
         </div>

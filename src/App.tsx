@@ -22,7 +22,7 @@ import { Task, Counter } from './types';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface DashboardContentProps {
-  onOpenRoulette: () => void;
+  onOpenRoulette: (poolType?: 'reward' | 'penalty') => void;
 }
 
 const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenRoulette }) => {
@@ -203,15 +203,21 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenRoulette }) =
 
 export const MainApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [roulettePoolType, setRoulettePoolType] = useState<'reward' | 'penalty'>('reward');
+
+  const handleOpenRoulette = (poolType: 'reward' | 'penalty' = 'reward') => {
+    setRoulettePoolType(poolType);
+    setActiveTab('roulette');
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans relative">
       <Header />
 
       <main className="flex-1 max-w-md mx-auto w-full p-4">
-        {activeTab === 'dashboard' && <DashboardContent onOpenRoulette={() => setActiveTab('roulette')} />}
+        {activeTab === 'dashboard' && <DashboardContent onOpenRoulette={handleOpenRoulette} />}
         {activeTab === 'calendar' && <CalendarView />}
-        {activeTab === 'roulette' && <RouletteWheel />}
+        {activeTab === 'roulette' && <RouletteWheel initialPoolType={roulettePoolType} />}
         {activeTab === 'settings' && (
           <div className="space-y-4 pb-20 animate-fadeIn">
             <LanguageSettings />

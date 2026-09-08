@@ -7,16 +7,26 @@ import { CycleType } from '../../types';
 import { getUkrainianDaysText } from '../dashboard/CycleCountdownBanner';
 import { translateEntityTitle } from '../../i18n/translations';
 
-export const RouletteWheel: React.FC = () => {
+interface RouletteWheelProps {
+  initialPoolType?: 'reward' | 'penalty';
+}
+
+export const RouletteWheel: React.FC<RouletteWheelProps> = ({ initialPoolType = 'reward' }) => {
   const { users, userXpMap, rouletteItems, household, updateHousehold, resetCycle, language, t } = useApp();
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [winnerItem, setWinnerItem] = useState<string | null>(null);
-  const [selectedPoolType, setSelectedPoolType] = useState<'reward' | 'penalty'>('reward');
+  const [selectedPoolType, setSelectedPoolType] = useState<'reward' | 'penalty'>(initialPoolType);
   const [customDaysInput, setCustomDaysInput] = useState<string>(
     household.cycle_days ? String(household.cycle_days) : '40'
   );
   const [showCustomInput, setShowCustomInput] = useState<boolean>(household.cycle_type === 'custom');
+
+  useEffect(() => {
+    if (initialPoolType) {
+      setSelectedPoolType(initialPoolType);
+    }
+  }, [initialPoolType]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
