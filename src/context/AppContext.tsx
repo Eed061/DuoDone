@@ -86,6 +86,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // Check URL parameters and Telegram WebApp start_param
     const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('reset') === 'true' || urlParams.get('clear') === 'true') {
+      localStorage.clear();
+      storage.initStorage();
+    }
+
     const rawInviteParam = urlParams.get('invite') || urlParams.get('start') || '';
     const roleParam = urlParams.get('role');
     const tgStartParam = (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param || '';
@@ -360,9 +365,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const handleFactoryReset = () => {
     triggerSuccessHaptic();
-    storage.factoryReset();
-    localStorage.removeItem('duodone_user_role');
-    loadAllData();
+    localStorage.clear();
+    storage.initStorage();
+    const freshUsers = storage.getUsers();
+    const freshHousehold = storage.getHousehold();
+    const freshTasks = storage.getTasks();
+    const freshCounters = storage.getCounters();
+    const freshLogs = storage.getActivityLogs();
+    const freshRoulette = storage.getRouletteItems();
+    pushStateToCloud(freshHousehold, freshUsers, freshTasks, freshCounters, freshLogs, freshRoulette);
+    window.location.reload();
   };
 
   const joinHouseholdByCode = async (code: string): Promise<boolean> => {
