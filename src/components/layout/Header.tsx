@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { translateEntityTitle } from '../../i18n/translations';
-import { Users, Edit3, ChevronDown, Plus, Check, Home, ShieldCheck } from 'lucide-react';
+import { Users, Edit3, ChevronDown, Plus, Check, Home, ShieldCheck, Settings } from 'lucide-react';
 import { EditUserModal } from './EditUserModal';
 import { CreateSpaceModal } from './CreateSpaceModal';
+import { SpaceManagementModal } from '../settings/SpaceManagementModal';
 
 export const Header: React.FC = () => {
   const { household, householdsList, switchHousehold, activeUser, partnerUser, language, t } = useApp();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSpaceDropdown, setShowSpaceDropdown] = useState(false);
   const [showCreateSpaceModal, setShowCreateSpaceModal] = useState(false);
+  const [showSpaceManagementModal, setShowSpaceManagementModal] = useState(false);
 
   const handleCreateSpace = () => {
     setShowSpaceDropdown(false);
@@ -92,13 +94,25 @@ export const Header: React.FC = () => {
                     })}
                   </div>
 
-                  <button
-                    onClick={handleCreateSpace}
-                    className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white text-xs font-black flex items-center justify-center space-x-1.5 shadow-md active:scale-95 transition-all"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t('header_create_space')}</span>
-                  </button>
+                  <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    <button
+                      onClick={handleCreateSpace}
+                      className="py-2 px-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white text-[10px] font-black flex items-center justify-center space-x-1 shadow-md active:scale-95 transition-all truncate"
+                    >
+                      <Plus className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{t('header_create_space')}</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowSpaceDropdown(false);
+                        setShowSpaceManagementModal(true);
+                      }}
+                      className="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold flex items-center justify-center space-x-1 border border-slate-700 transition-all truncate"
+                    >
+                      <Settings className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{t('sm_manage_spaces_btn')}</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -149,6 +163,7 @@ export const Header: React.FC = () => {
 
       {showEditModal && <EditUserModal onClose={() => setShowEditModal(false)} />}
       {showCreateSpaceModal && <CreateSpaceModal onClose={() => setShowCreateSpaceModal(false)} />}
+      {showSpaceManagementModal && <SpaceManagementModal onClose={() => setShowSpaceManagementModal(false)} />}
     </>
   );
 };

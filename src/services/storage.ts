@@ -409,6 +409,12 @@ class StorageService {
     return updated;
   }
 
+  public deleteHouseholdSpace(householdId: string): Household[] {
+    const list = this.getHouseholdsList().filter((h) => h.id !== householdId);
+    this.setItem(STORAGE_KEYS.HOUSEHOLDS_LIST, list);
+    return list;
+  }
+
   // Tasks
   public getTasks(): Task[] {
     return this.getItem(STORAGE_KEYS.TASKS, defaultTasks);

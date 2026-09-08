@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { translateEntityTitle } from '../../i18n/translations';
-import { Copy, Check, Users, Edit3, RotateCcw, RefreshCw, AlertTriangle, ArrowRight, Send, Plus, ShieldCheck, Lock } from 'lucide-react';
+import { Copy, Check, Users, Edit3, RotateCcw, RefreshCw, AlertTriangle, ArrowRight, Send, Plus, ShieldCheck, Lock, UserX, Settings } from 'lucide-react';
 import { triggerSuccessHaptic, openTelegramLink } from '../../services/telegram';
 import { EditUserModal } from '../layout/EditUserModal';
 import { CreateSpaceModal } from '../layout/CreateSpaceModal';
+import { SpaceManagementModal } from './SpaceManagementModal';
 
 export const HouseholdShareModal: React.FC = () => {
-  const { household, updateHousehold, users, resetCycle, factoryReset, language, t, joinHouseholdByCode } = useApp();
+  const { household, updateHousehold, users, resetCycle, factoryReset, language, t, joinHouseholdByCode, disconnectPartner } = useApp();
   const [copiedCard, setCopiedCard] = useState(false);
   const [nameInput, setNameInput] = useState(household.name || 'Наш дім');
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [showCreateSpaceModal, setShowCreateSpaceModal] = useState(false);
+  const [showSpaceManagementModal, setShowSpaceManagementModal] = useState(false);
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
   const [showFactoryConfirm, setShowFactoryConfirm] = useState(false);
   const [showResetCycleConfirm, setShowResetCycleConfirm] = useState(false);
   const [joinCodeInput, setJoinCodeInput] = useState('');
@@ -146,14 +149,59 @@ export const HouseholdShareModal: React.FC = () => {
           </div>
         </form>
 
-        {/* Multi-Space Quick Creation Button */}
-        <button
-          onClick={handleCreateNewSpace}
-          className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-md active:scale-95 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{t('hsm_space_create_btn')}</span>
-        </button>
+        {/* Multi-Space Creation & Management Buttons */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={handleCreateNewSpace}
+            className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-md active:scale-95 transition-all truncate"
+          >
+            <Plus className="w-4 h-4 shrink-0" />
+            <span className="truncate">{t('hsm_space_create_btn')}</span>
+          </button>
+          <button
+            onClick={() => setShowSpaceManagementModal(true)}
+            className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-indigo-300 font-extrabold text-xs flex items-center justify-center space-x-1.5 border border-indigo-500/30 transition-all truncate"
+          >
+            <Settings className="w-4 h-4 shrink-0" />
+            <span className="truncate">{t('sm_manage_spaces_btn')}</span>
+          </button>
+        </div>
+
+        {/* Disconnect Partner Control when 2/2 */}
+        {isLocked && (
+          <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 space-y-2">
+            {!showDisconnectConfirm ? (
+              <button
+                onClick={() => setShowDisconnectConfirm(true)}
+                className="w-full py-2 px-3 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 text-xs font-bold flex items-center justify-center space-x-1.5 border border-amber-500/30 transition-all"
+              >
+                <UserX className="w-4 h-4" />
+                <span>{t('sm_disconnect_partner')}</span>
+              </button>
+            ) : (
+              <div className="bg-amber-950/80 border border-amber-500/50 rounded-xl p-3 text-center space-y-2 animate-fadeIn">
+                <p className="text-xs text-amber-200 font-semibold">{t('sm_disconnect_confirm')}</p>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setShowDisconnectConfirm(false)}
+                    className="flex-1 py-1.5 bg-slate-800 text-slate-300 text-xs font-bold rounded-lg"
+                  >
+                    {t('cancel')}
+                  </button>
+                  <button
+                    onClick={() => {
+                      disconnectPartner();
+                      setShowDisconnectConfirm(false);
+                    }}
+                    className="flex-1 py-1.5 bg-amber-600 text-white text-xs font-bold rounded-lg"
+                  >
+                    {t('sm_disconnect_partner')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Cycle & Reset Control Buttons */}
         <div className="pt-2 space-y-2 border-t border-slate-700/60">
@@ -304,6 +352,7 @@ export const HouseholdShareModal: React.FC = () => {
 
       {showEditUserModal && <EditUserModal onClose={() => setShowEditUserModal(false)} />}
       {showCreateSpaceModal && <CreateSpaceModal onClose={() => setShowCreateSpaceModal(false)} />}
+      {showSpaceManagementModal && <SpaceManagementModal onClose={() => setShowSpaceManagementModal(false)} />}
     </>
   );
 };

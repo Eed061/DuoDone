@@ -35,6 +35,9 @@ interface AppContextType {
   resetCycle: () => void;
   factoryReset: () => void;
   joinHouseholdByCode: (code: string) => Promise<{ success: boolean; reason?: string }>;
+  renameHousehold: (householdId: string, name: string) => void;
+  deleteHousehold: (householdId: string) => void;
+  disconnectPartner: (householdId?: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -599,6 +602,80 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return { success: false, reason: 'not_found' };
   };
 
+  const handleRenameHousehold = (householdId: string, name: string) => {
+    triggerHaptic('medium');
+    const updatedList = householdsList.map((h) => (h.id === householdId ? { ...h, name } : h));
+    setHouseholdsList(updatedList);
+    storage.saveHouseholdToList({ ...household, id: householdId, name });
+
+    if (household.id === householdId) {
+      const updatedHousehold = { ...household, name };
+      setHousehold(updatedHousehold);
+      storage.saveHousehold(updatedHousehold);
+      pushStateToCloud(updatedHousehold, users, tasks, counters, activityLogs, rouletteItems);
+    }
+  };
+
+  const handleDisconnectPartner = (targetHouseholdId?: string) => {
+    triggerSuccessHaptic();
+    const hhId = targetHouseholdId || household.id;
+    const targetHh = householdsList.find((h) => h.id === hhId) || household;
+
+    const freshUsers: User[] = [
+      users[0] || { id: activeUser.id, first_name: 'Партнер 1', created_at: new Date().toISOString() },
+      {
+        id: `usr-partner-2-${Date.now()}`,
+        first_name: 'Партнер',
+        avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Elena&backgroundColor=ffdfbf',
+        is_placeholder: true,
+        created_at: new Date().toISOString(),
+      },
+    ];
+
+    const updatedHousehold: Household = {
+      ...targetHh,
+      is_locked: false,
+      members: [{ userId: freshUsers[0].id, role: 'p1', joinedAt: new Date().toISOString() }],
+    };
+
+    storage.saveHousehold(updatedHousehold);
+    storage.saveHouseholdToList(updatedHousehold);
+    storage.saveUsers(freshUsers);
+
+    if (household.id === hhId) {
+      setHousehold(updatedHousehold);
+      setUsers(freshUsers);
+      setActiveUserId(freshUsers[0].id);
+      storage.setActiveUserId(freshUsers[0].id);
+      pushStateToCloud(updatedHousehold, freshUsers, tasks, counters, activityLogs, rouletteItems);
+    } else {
+      const updatedList = storage.getHouseholdsList();
+      setHouseholdsList(updatedList);
+      cloudSync.pushState({
+        household: updatedHousehold,
+        users: freshUsers,
+        tasks: [],
+        counters: [],
+        activityLogs: [],
+        rouletteItems: [],
+      });
+    }
+  };
+
+  const handleDeleteHousehold = (householdId: string) => {
+    triggerHaptic('heavy');
+    const remainingList = storage.deleteHouseholdSpace(householdId);
+    setHouseholdsList(remainingList);
+
+    if (household.id === householdId) {
+      if (remainingList.length > 0) {
+        handleSwitchHousehold(remainingList[0].id);
+      } else {
+        handleCreateNewHousehold();
+      }
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -631,6 +708,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         resetCycle: handleResetCycle,
         factoryReset: handleFactoryReset,
         joinHouseholdByCode,
+        renameHousehold: handleRenameHousehold,
+        deleteHousehold: handleDeleteHousehold,
+        disconnectPartner: handleDisconnectPartner,
       }}
     >
       {children}
