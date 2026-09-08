@@ -18,11 +18,11 @@ export class FirebaseSyncService {
   private pushTimer: any = null;
 
   public sanitizeCode(code: string): string {
-    return (code || 'DUO-7789').toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    return (code || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
   }
 
-  // Push current household state to cloud (Dual Vercel API + REST Store)
-  public pushState(state: Omit<CloudState, 'updatedAt'>): void {
+  // Push current household state to cloud
+  public pushState(state: Omit<CloudState, 'updatedAt'>, requestingUserId?: string): void {
     if (!state.household?.invite_code) return;
 
     if (this.pushTimer) clearTimeout(this.pushTimer);
@@ -37,11 +37,11 @@ export class FirebaseSyncService {
 
         lastKnownUpdatedAt = dataToSave.updatedAt;
 
-        // 1. Send to Vercel serverless endpoint
-        fetch(`/api/sync?code=${code}`, {
+        // 1. Send to Vercel serverless endpoint with requestingUserId
+        fetch(`/api/sync?code=${code}&userId=${requestingUserId || ''}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(dataToSave),
+          body: JSON.stringify({ ...dataToSave, requestingUserId }),
         }).catch(() => {});
 
         // 2. Backup send to secondary global REST API
@@ -59,6 +59,7 @@ export class FirebaseSyncService {
   // Check if household space is full (2 members locked) for a 3rd user
   public async checkSpaceAccess(inviteCode: string, requestingUserId?: string): Promise<{ allowed: boolean; is_locked?: boolean; message?: string }> {
     const code = this.sanitizeCode(inviteCode);
+    if (!code) return { allowed: true };
     try {
       const res = await fetch(`/api/sync?code=${code}&action=join_check&userId=${requestingUserId || ''}`);
       if (res.status === 403) {
@@ -69,14 +70,18 @@ export class FirebaseSyncService {
     return { allowed: true };
   }
 
-  // Fetch household state from cloud by invite code
-  public async fetchHouseholdByCode(inviteCode: string): Promise<CloudState | null> {
+  // Fetch household state from cloud by invite code with requestingUserId access control
+  public async fetchHouseholdByCode(inviteCode: string, requestingUserId?: string): Promise<CloudState | null> {
     if (!inviteCode) return null;
     const code = this.sanitizeCode(inviteCode);
 
     // 1. Try Vercel Serverless Endpoint
     try {
-      const res = await fetch(`/api/sync?code=${code}`);
+      const res = await fetch(`/api/sync?code=${code}&userId=${requestingUserId || ''}`);
+      if (res.status === 403) {
+        // Forbidden to 3rd party
+        return null;
+      }
       if (res.ok) {
         const data = (await res.json()) as CloudState;
         if (data && data.household) {
@@ -97,6 +102,15 @@ export class FirebaseSyncService {
 
         if (found && found.data) {
           const data = found.data as CloudState;
+          const realMembers = (data.users || []).filter((u: User) => !u.is_placeholder);
+          if (realMembers.length >= 2) {
+            const memberIds = realMembers.map((u: User) => String(u.id));
+            const memberTgIds = realMembers.map((u: User) => String(u.telegram_id || ''));
+            const isAuth = requestingUserId && (memberIds.includes(String(requestingUserId)) || memberTgIds.includes(String(requestingUserId)));
+            if (!isAuth) {
+              return null;
+            }
+          }
           if (data.updatedAt) lastKnownUpdatedAt = data.updatedAt;
           return data;
         }
@@ -109,7 +123,12 @@ export class FirebaseSyncService {
   }
 
   // Subscribe to real-time changes for a household (Polling Engine)
-  public subscribeToHousehold(inviteCode: string, onUpdate: (data: CloudState) => void): void {
+  public subscribeToHousehold(
+    inviteCode: string,
+    requestingUserId: string,
+    onUpdate: (data: CloudState) => void,
+    onDenied?: () => void
+  ): void {
     if (!inviteCode) return;
     const code = this.sanitizeCode(inviteCode);
 
@@ -117,11 +136,18 @@ export class FirebaseSyncService {
 
     activePollInterval = setInterval(async () => {
       try {
-        const freshData = await this.fetchHouseholdByCode(code);
+        const freshData = await this.fetchHouseholdByCode(code, requestingUserId);
         if (freshData && freshData.household) {
           if (freshData.updatedAt && freshData.updatedAt !== lastKnownUpdatedAt) {
             lastKnownUpdatedAt = freshData.updatedAt;
             onUpdate(freshData);
+          }
+        } else {
+          // Verify if space was locked and access denied
+          const access = await this.checkSpaceAccess(code, requestingUserId);
+          if (!access.allowed) {
+            this.unsubscribe();
+            if (onDenied) onDenied();
           }
         }
       } catch {}

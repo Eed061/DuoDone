@@ -75,14 +75,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     currentRoulette: RouletteItem[]
   ) => {
     if (currentHousehold && currentHousehold.invite_code) {
-      cloudSync.pushState({
-        household: currentHousehold,
-        users: currentUsers,
-        tasks: currentTasks,
-        counters: currentCounters,
-        activityLogs: currentLogs,
-        rouletteItems: currentRoulette,
-      });
+      cloudSync.pushState(
+        {
+          household: currentHousehold,
+          users: currentUsers,
+          tasks: currentTasks,
+          counters: currentCounters,
+          activityLogs: currentLogs,
+          rouletteItems: currentRoulette,
+        },
+        storage.getActiveUserId()
+      );
     }
   };
 
@@ -119,7 +122,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (extractedCode) {
       const access = await cloudSync.checkSpaceAccess(extractedCode, activeUId);
       if (access.allowed) {
-        const cloudData = await cloudSync.fetchHouseholdByCode(extractedCode);
+        const cloudData = await cloudSync.fetchHouseholdByCode(extractedCode, activeUId);
         if (cloudData && cloudData.household) {
           storedHousehold = cloudData.household;
           storedUsers = cloudData.users || storedUsers;
@@ -204,36 +207,40 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // Subscribe to cloud real-time updates for this household code
     if (storedHousehold.invite_code) {
-      cloudSync.subscribeToHousehold(storedHousehold.invite_code, (cloudData: CloudState) => {
-        if (cloudData) {
-          if (cloudData.household) {
-            setHousehold(cloudData.household);
-            storage.saveHousehold(cloudData.household);
-            storage.saveHouseholdToList(cloudData.household);
-            setHouseholdsList(storage.getHouseholdsList());
-          }
-          if (cloudData.users) {
-            setUsers(cloudData.users);
-            storage.saveUsers(cloudData.users);
-          }
-          if (cloudData.tasks) {
-            setTasks(cloudData.tasks);
-            storage.saveTasks(cloudData.tasks);
-          }
-          if (cloudData.counters) {
-            setCounters(cloudData.counters);
-            storage.saveCounters(cloudData.counters);
-          }
-          if (cloudData.activityLogs) {
-            setActivityLogs(cloudData.activityLogs);
-            storage.saveActivityLogs(cloudData.activityLogs);
-          }
-          if (cloudData.rouletteItems) {
-            setRouletteItems(cloudData.rouletteItems);
-            storage.saveRouletteItems(cloudData.rouletteItems);
+      cloudSync.subscribeToHousehold(
+        storedHousehold.invite_code,
+        storage.getActiveUserId(),
+        (cloudData: CloudState) => {
+          if (cloudData) {
+            if (cloudData.household) {
+              setHousehold(cloudData.household);
+              storage.saveHousehold(cloudData.household);
+              storage.saveHouseholdToList(cloudData.household);
+              setHouseholdsList(storage.getHouseholdsList());
+            }
+            if (cloudData.users) {
+              setUsers(cloudData.users);
+              storage.saveUsers(cloudData.users);
+            }
+            if (cloudData.tasks) {
+              setTasks(cloudData.tasks);
+              storage.saveTasks(cloudData.tasks);
+            }
+            if (cloudData.counters) {
+              setCounters(cloudData.counters);
+              storage.saveCounters(cloudData.counters);
+            }
+            if (cloudData.activityLogs) {
+              setActivityLogs(cloudData.activityLogs);
+              storage.saveActivityLogs(cloudData.activityLogs);
+            }
+            if (cloudData.rouletteItems) {
+              setRouletteItems(cloudData.rouletteItems);
+              storage.saveRouletteItems(cloudData.rouletteItems);
+            }
           }
         }
-      });
+      );
     }
   };
 
@@ -249,12 +256,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   const activeUser = useMemo(() => {
+    const tgUser = getTelegramUser();
+    if (tgUser && users.length >= 2) {
+      const byTgId = users.find((u) => u.telegram_id && String(u.telegram_id) === String(tgUser.id));
+      if (byTgId) return byTgId;
+    }
+
+    const savedRole = localStorage.getItem('duodone_user_role');
+    if (savedRole === 'p2' && users[1]) return users[1];
+    if (savedRole === 'p1' && users[0]) return users[0];
+
     return users.find((u) => u.id === activeUserId) || users[0] || ({ id: 'fallback', first_name: 'Користувач' } as User);
   }, [users, activeUserId]);
 
   const partnerUser = useMemo(() => {
-    return users.find((u) => u.id !== activeUserId) || users[1] || ({ id: 'partner', first_name: 'Партнер' } as User);
-  }, [users, activeUserId]);
+    return users.find((u) => u.id !== activeUser.id) || (activeUser.id === users[0]?.id ? users[1] : users[0]) || ({ id: 'partner', first_name: 'Партнер' } as User);
+  }, [users, activeUser]);
 
   // Calculate XP per user
   const userXpMap = useMemo(() => {
@@ -395,7 +412,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setHousehold(target);
       storage.saveHousehold(target);
       if (target.invite_code) {
-        cloudSync.subscribeToHousehold(target.invite_code, (cloudData: CloudState) => {
+        cloudSync.subscribeToHousehold(target.invite_code, storage.getActiveUserId(), (cloudData: CloudState) => {
           if (cloudData) {
             if (cloudData.household) {
               setHousehold(cloudData.household);
@@ -482,7 +499,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     pushStateToCloud(newHh, freshUsers, freshTasks, freshCounters, freshLogs, freshRoulette);
 
     if (newHh.invite_code) {
-      cloudSync.subscribeToHousehold(newHh.invite_code, (cloudData: CloudState) => {
+      cloudSync.subscribeToHousehold(newHh.invite_code, storage.getActiveUserId(), (cloudData: CloudState) => {
         if (cloudData && cloudData.household) {
           setHousehold(cloudData.household);
           storage.saveHousehold(cloudData.household);
@@ -580,7 +597,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         cloudData.rouletteItems || rouletteItems
       );
 
-      cloudSync.subscribeToHousehold(updatedHousehold.invite_code, (newCloudData: CloudState) => {
+      cloudSync.subscribeToHousehold(updatedHousehold.invite_code, storage.getActiveUserId(), (newCloudData: CloudState) => {
         if (newCloudData) {
           if (newCloudData.household) {
             setHousehold(newCloudData.household);
