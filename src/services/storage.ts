@@ -108,7 +108,7 @@ const defaultCounters: Counter[] = [
     icon: '🪟',
     photo_mode: 'required',
     step: 1,
-    total_count: 2,
+    total_count: 0,
     show_on_dashboard: true,
     created_at: new Date().toISOString(),
   },
@@ -120,7 +120,7 @@ const defaultCounters: Counter[] = [
     icon: '🧹',
     photo_mode: 'none',
     step: 1,
-    total_count: 14,
+    total_count: 0,
     show_on_dashboard: true,
     created_at: new Date().toISOString(),
   },
@@ -132,7 +132,7 @@ const defaultCounters: Counter[] = [
     icon: '🪴',
     photo_mode: 'none',
     step: 1,
-    total_count: 9,
+    total_count: 0,
     show_on_dashboard: true,
     created_at: new Date().toISOString(),
   },
@@ -198,53 +198,8 @@ const defaultRouletteItems: RouletteItem[] = [
   },
 ];
 
-// Initial activity logs
-const defaultLogs: ActivityLog[] = [
-  {
-    id: 'log-1',
-    household_id: 'hh-main-001',
-    user_id: 'user-he-101',
-    entity_type: 'duodone_task',
-    entity_id: 'task-dishes-1',
-    entity_title: 'Миття посуду',
-    entity_icon: '🧽',
-    xp_earned: 2,
-    created_at: new Date(Date.now() - 3600000 * 5).toISOString(),
-  },
-  {
-    id: 'log-2',
-    household_id: 'hh-main-001',
-    user_id: 'user-she-102',
-    entity_type: 'duodone_task',
-    entity_id: 'task-trash-2',
-    entity_title: 'Виніс сміття',
-    entity_icon: '🗑️',
-    xp_earned: 1,
-    created_at: new Date(Date.now() - 3600000 * 22).toISOString(),
-  },
-  {
-    id: 'log-3',
-    household_id: 'hh-main-001',
-    user_id: 'user-he-101',
-    entity_type: 'counter',
-    entity_id: 'counter-vacuum-2',
-    entity_title: 'Пилососіння',
-    entity_icon: '🧹',
-    xp_earned: 0,
-    created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
-  },
-  {
-    id: 'log-4',
-    household_id: 'hh-main-001',
-    user_id: 'user-she-102',
-    entity_type: 'counter',
-    entity_id: 'counter-flowers-3',
-    entity_title: 'Полив квітів',
-    entity_icon: '🪴',
-    xp_earned: 0,
-    created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-  },
-];
+// Initial activity logs (Empty so all users start clean at 0 XP)
+const defaultLogs: ActivityLog[] = [];
 
 class StorageService {
   private getItem<T>(key: string, fallback: T): T {
