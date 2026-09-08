@@ -136,13 +136,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           if (cloudData.activityLogs) storage.saveActivityLogs(cloudData.activityLogs);
           if (cloudData.rouletteItems) storage.saveRouletteItems(cloudData.rouletteItems);
         } else {
-          // Cloud fetch failed or denied -> create user's own new isolated space
-          storedHousehold = storage.createNewHouseholdSpace(`${telegramUser?.first_name || 'Моя'} пара`, undefined, telegramUser || undefined);
-          storedUsers = storage.getUsers();
+          // Cloud data not fetched synchronously yet, but access is allowed -> bind invite code to current space
+          storedHousehold.invite_code = extractedCode;
+          storage.saveHousehold(storedHousehold);
         }
       } else {
-        // Access denied (Space is full 2/2 or user not authorized)
-        // Reset to user's own new isolated space
+        // Access denied ONLY if space is already full (2/2 real members)
         storedHousehold = storage.createNewHouseholdSpace(`${telegramUser?.first_name || 'Моя'} пара`, undefined, telegramUser || undefined);
         storedUsers = storage.getUsers();
       }
@@ -198,8 +197,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         storage.setActiveUserId(storedUsers[0].id);
         localStorage.setItem('duodone_user_role', 'p1');
       } else {
-        // User 3 is NOT Partner 1, NOT Partner 2, and Partner 2 slot is not open!
-        // DO NOT overwrite Partner 1 or Partner 2! Create a new space for User 3!
+        // Only if space is full (2/2 real partners) and user does not match either partner
         storedHousehold = storage.createNewHouseholdSpace(`${telegramUser.first_name || 'Моя'} пара`, undefined, telegramUser);
         storedUsers = storage.getUsers();
         storage.setActiveUserId(storedUsers[0].id);
