@@ -316,6 +316,30 @@ class StorageService {
     return this.getItem(STORAGE_KEYS.HOUSEHOLD, defaultHousehold);
   }
 
+  public saveHousehold(hh: Household): void {
+    this.setItem(STORAGE_KEYS.HOUSEHOLD, hh);
+  }
+
+  public saveUsers(users: User[]): void {
+    this.setItem(STORAGE_KEYS.USERS, users);
+  }
+
+  public saveTasks(tasks: Task[]): void {
+    this.setItem(STORAGE_KEYS.TASKS, tasks);
+  }
+
+  public saveCounters(counters: Counter[]): void {
+    this.setItem(STORAGE_KEYS.COUNTERS, counters);
+  }
+
+  public saveActivityLogs(logs: ActivityLog[]): void {
+    this.setItem(STORAGE_KEYS.ACTIVITY_LOGS, logs);
+  }
+
+  public saveRouletteItems(items: RouletteItem[]): void {
+    this.setItem(STORAGE_KEYS.ROULETTE_ITEMS, items);
+  }
+
   public updateHousehold(updates: Partial<Household>): Household {
     const current = this.getHousehold();
     const updated = { ...current, ...updates };

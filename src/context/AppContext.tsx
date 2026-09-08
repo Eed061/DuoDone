@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { User, Household, Task, Counter, ActivityLog, RouletteItem } from '../types';
 import { storage } from '../services/storage';
+import { cloudSync, CloudState } from '../services/firebaseSync';
 import { triggerHaptic, triggerSuccessHaptic, initTelegramWebApp, getTelegramUser } from '../services/telegram';
 import { Language, getTranslation } from '../i18n/translations';
 
@@ -30,6 +31,7 @@ interface AppContextType {
   deleteRouletteItem: (itemId: string) => void;
   resetCycle: () => void;
   factoryReset: () => void;
+  joinHouseholdByCode: (code: string) => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -56,18 +58,64 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return getTranslation(language, key, params);
   };
 
-  const loadAllData = () => {
+  // Helper to push full state to cloud
+  const pushStateToCloud = (
+    currentHousehold: Household,
+    currentUsers: User[],
+    currentTasks: Task[],
+    currentCounters: Counter[],
+    currentLogs: ActivityLog[],
+    currentRoulette: RouletteItem[]
+  ) => {
+    if (currentHousehold && currentHousehold.invite_code) {
+      cloudSync.pushState({
+        household: currentHousehold,
+        users: currentUsers,
+        tasks: currentTasks,
+        counters: currentCounters,
+        activityLogs: currentLogs,
+        rouletteItems: currentRoulette,
+      });
+    }
+  };
+
+  const loadAllData = async () => {
     let storedUsers = storage.getUsers();
+    let storedHousehold = storage.getHousehold();
     const telegramUser = getTelegramUser();
 
     // Check URL parameters and Telegram WebApp start_param
     const urlParams = new URLSearchParams(window.location.search);
-    const inviteParam = urlParams.get('invite') || urlParams.get('start');
+    const rawInviteParam = urlParams.get('invite') || urlParams.get('start') || '';
     const roleParam = urlParams.get('role');
-    const tgStartParam = (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param;
-    const fullStart = inviteParam || tgStartParam || '';
+    const tgStartParam = (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param || '';
+    const fullStart = rawInviteParam || tgStartParam || '';
 
-    const isInvitedPartner = fullStart.includes('accept') || fullStart.includes('join') || roleParam === 'p2';
+    // Extract invite code if passed (e.g., DUO-7789 or accept_DUO-7789)
+    let extractedCode = '';
+    if (fullStart) {
+      const match = fullStart.match(/([A-Z0-9]{3,4}-?[A-Z0-9]{3,4})/i);
+      if (match) extractedCode = match[1];
+      else if (fullStart.includes('_')) extractedCode = fullStart.split('_')[1];
+      else extractedCode = fullStart;
+    }
+
+    const isInvitedPartner = fullStart.includes('accept') || fullStart.includes('join') || roleParam === 'p2' || Boolean(extractedCode);
+
+    // If invited by code, attempt to fetch existing household from cloud
+    if (extractedCode) {
+      const cloudData = await cloudSync.fetchHouseholdByCode(extractedCode);
+      if (cloudData && cloudData.household) {
+        storedHousehold = cloudData.household;
+        storedUsers = cloudData.users || storedUsers;
+        storage.saveHousehold(storedHousehold);
+        storage.saveUsers(storedUsers);
+        if (cloudData.tasks) storage.saveTasks(cloudData.tasks);
+        if (cloudData.counters) storage.saveCounters(cloudData.counters);
+        if (cloudData.activityLogs) storage.saveActivityLogs(cloudData.activityLogs);
+        if (cloudData.rouletteItems) storage.saveRouletteItems(cloudData.rouletteItems);
+      }
+    }
 
     if (telegramUser && storedUsers.length >= 2) {
       const currentTgId = telegramUser.id;
@@ -79,7 +127,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const u2TgId = storedUsers[1].telegram_id;
       const u2TgUsername = storedUsers[1].telegram_username ? String(storedUsers[1].telegram_username).replace('@', '').toLowerCase() : '';
 
-      // Check Partner 2 match or Invite Link
       if (
         isInvitedPartner ||
         (u2TgId && String(u2TgId) === String(currentTgId)) ||
@@ -90,9 +137,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         storage.updateUser(storedUsers[1].id, storedUsers[1]);
         storage.setActiveUserId(storedUsers[1].id);
         localStorage.setItem('duodone_user_role', 'p2');
-      }
-      // Check Partner 1 match or Creator device
-      else if (
+      } else if (
         (u1TgId && String(u1TgId) === String(currentTgId)) ||
         (u1TgUsername && currentTgUsername && u1TgUsername === currentTgUsername) ||
         !isInvitedPartner
@@ -108,19 +153,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       localStorage.setItem('duodone_user_role', 'p2');
     }
 
-    // Process custom user names from invite link if passed
-    if (fullStart) {
-      const u1Name = urlParams.get('u1');
-      const u2Name = urlParams.get('u2');
-
-      if (u1Name && storedUsers[0]) storedUsers[0].first_name = u1Name;
-      if (u2Name && storedUsers[1]) storedUsers[1].first_name = u2Name;
-
-      if (storedUsers[0]) storage.updateUser(storedUsers[0].id, storedUsers[0]);
-      if (storedUsers[1]) storage.updateUser(storedUsers[1].id, storedUsers[1]);
-    }
-
-    // Honor explicitly saved user role on this device
     const savedRole = localStorage.getItem('duodone_user_role');
     if (savedRole === 'p2' && storedUsers[1]) {
       storage.setActiveUserId(storedUsers[1].id);
@@ -128,13 +160,53 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       storage.setActiveUserId(storedUsers[0].id);
     }
 
-    setUsers(storage.getUsers());
+    const loadedTasks = storage.getTasks();
+    const loadedCounters = storage.getCounters();
+    const loadedLogs = storage.getActivityLogs();
+    const loadedRoulette = storage.getRouletteItems();
+
+    setUsers(storedUsers);
     setActiveUserId(storage.getActiveUserId());
-    setHousehold(storage.getHousehold());
-    setTasks(storage.getTasks());
-    setCounters(storage.getCounters());
-    setActivityLogs(storage.getActivityLogs());
-    setRouletteItems(storage.getRouletteItems());
+    setHousehold(storedHousehold);
+    setTasks(loadedTasks);
+    setCounters(loadedCounters);
+    setActivityLogs(loadedLogs);
+    setRouletteItems(loadedRoulette);
+
+    // Initial push to cloud to seed if new
+    pushStateToCloud(storedHousehold, storedUsers, loadedTasks, loadedCounters, loadedLogs, loadedRoulette);
+
+    // Subscribe to cloud real-time updates for this household code
+    if (storedHousehold.invite_code) {
+      cloudSync.subscribeToHousehold(storedHousehold.invite_code, (cloudData: CloudState) => {
+        if (cloudData) {
+          if (cloudData.household) {
+            setHousehold(cloudData.household);
+            storage.saveHousehold(cloudData.household);
+          }
+          if (cloudData.users) {
+            setUsers(cloudData.users);
+            storage.saveUsers(cloudData.users);
+          }
+          if (cloudData.tasks) {
+            setTasks(cloudData.tasks);
+            storage.saveTasks(cloudData.tasks);
+          }
+          if (cloudData.counters) {
+            setCounters(cloudData.counters);
+            storage.saveCounters(cloudData.counters);
+          }
+          if (cloudData.activityLogs) {
+            setActivityLogs(cloudData.activityLogs);
+            storage.saveActivityLogs(cloudData.activityLogs);
+          }
+          if (cloudData.rouletteItems) {
+            setRouletteItems(cloudData.rouletteItems);
+            storage.saveRouletteItems(cloudData.rouletteItems);
+          }
+        }
+      });
+    }
   };
 
   // Initialize storage & state
@@ -142,6 +214,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     initTelegramWebApp();
     storage.initStorage();
     loadAllData();
+
+    return () => {
+      cloudSync.unsubscribe();
+    };
   }, []);
 
   const activeUser = useMemo(() => {
@@ -152,7 +228,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return users.find((u) => u.id !== activeUserId) || users[1] || ({ id: 'partner', first_name: 'Партнер' } as User);
   }, [users, activeUserId]);
 
-  // Calculate XP per user for the current period
+  // Calculate XP per user
   const userXpMap = useMemo(() => {
     const map: Record<string, number> = {};
     users.forEach((u) => {
@@ -180,22 +256,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     triggerHaptic('medium');
     const updatedUsers = storage.updateUser(userId, updates);
     setUsers([...updatedUsers]);
+    pushStateToCloud(household, updatedUsers, tasks, counters, activityLogs, rouletteItems);
   };
 
   const handleUpdateHousehold = (updates: Partial<Household>) => {
     triggerHaptic('medium');
     const updated = storage.updateHousehold(updates);
     setHousehold(updated);
+    pushStateToCloud(updated, users, tasks, counters, activityLogs, rouletteItems);
   };
 
   const handleCompleteTask = async (taskId: string, photoUrl?: string | null) => {
     triggerSuccessHaptic();
     const { task, log } = storage.completeTask(taskId, activeUser.id, photoUrl);
 
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? task : t)));
-    setActivityLogs((prev) => [log, ...prev]);
+    const updatedTasks = tasks.map((t) => (t.id === taskId ? task : t));
+    const updatedLogs = [log, ...activityLogs];
 
-    // Dispatch cat reaction event
+    setTasks(updatedTasks);
+    setActivityLogs(updatedLogs);
+
+    pushStateToCloud(household, users, updatedTasks, counters, updatedLogs, rouletteItems);
     window.dispatchEvent(new CustomEvent('duodone_task_completed'));
   };
 
@@ -203,47 +284,62 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     triggerSuccessHaptic();
     const { counter, log } = storage.incrementCounter(counterId, activeUser.id, photoUrl);
 
-    setCounters((prev) => prev.map((c) => (c.id === counterId ? counter : c)));
-    setActivityLogs((prev) => [log, ...prev]);
+    const updatedCounters = counters.map((c) => (c.id === counterId ? counter : c));
+    const updatedLogs = [log, ...activityLogs];
 
-    // Dispatch cat reaction event
+    setCounters(updatedCounters);
+    setActivityLogs(updatedLogs);
+
+    pushStateToCloud(household, users, tasks, updatedCounters, updatedLogs, rouletteItems);
     window.dispatchEvent(new CustomEvent('duodone_task_completed'));
   };
 
   const handleSaveTask = (task: Task) => {
     triggerHaptic('medium');
     storage.saveTask(task);
-    setTasks(storage.getTasks());
+    const updatedTasks = storage.getTasks();
+    setTasks(updatedTasks);
+    pushStateToCloud(household, users, updatedTasks, counters, activityLogs, rouletteItems);
   };
 
   const handleDeleteTask = (taskId: string) => {
     triggerHaptic('medium');
     storage.deleteTask(taskId);
-    setTasks(storage.getTasks());
+    const updatedTasks = storage.getTasks();
+    setTasks(updatedTasks);
+    pushStateToCloud(household, users, updatedTasks, counters, activityLogs, rouletteItems);
   };
 
   const handleSaveCounter = (counter: Counter) => {
     triggerHaptic('medium');
     storage.saveCounter(counter);
-    setCounters(storage.getCounters());
+    const updatedCounters = storage.getCounters();
+    setCounters(updatedCounters);
+    pushStateToCloud(household, users, tasks, updatedCounters, activityLogs, rouletteItems);
   };
 
   const handleDeleteCounter = (counterId: string) => {
     triggerHaptic('medium');
     storage.deleteCounter(counterId);
-    setCounters(storage.getCounters());
+    const updatedCounters = storage.getCounters();
+    setCounters(updatedCounters);
+    pushStateToCloud(household, users, tasks, updatedCounters, activityLogs, rouletteItems);
   };
 
   const handleSaveRouletteItem = (item: RouletteItem) => {
     triggerHaptic('medium');
     storage.saveRouletteItem(item);
-    setRouletteItems(storage.getRouletteItems());
+    const updatedRoulette = storage.getRouletteItems();
+    setRouletteItems(updatedRoulette);
+    pushStateToCloud(household, users, tasks, counters, activityLogs, updatedRoulette);
   };
 
   const handleDeleteRouletteItem = (itemId: string) => {
     triggerHaptic('medium');
     storage.deleteRouletteItem(itemId);
-    setRouletteItems(storage.getRouletteItems());
+    const updatedRoulette = storage.getRouletteItems();
+    setRouletteItems(updatedRoulette);
+    pushStateToCloud(household, users, tasks, counters, activityLogs, updatedRoulette);
   };
 
   const handleResetCycle = () => {
@@ -252,9 +348,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const nextDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
     storage.resetCycle(nextDate.toISOString());
 
-    setHousehold(storage.getHousehold());
+    const updatedHousehold = storage.getHousehold();
+    const updatedCounters = storage.getCounters();
+
+    setHousehold(updatedHousehold);
     setActivityLogs([]);
-    setCounters(storage.getCounters());
+    setCounters(updatedCounters);
+
+    pushStateToCloud(updatedHousehold, users, tasks, updatedCounters, [], rouletteItems);
   };
 
   const handleFactoryReset = () => {
@@ -262,6 +363,48 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     storage.factoryReset();
     localStorage.removeItem('duodone_user_role');
     loadAllData();
+  };
+
+  const joinHouseholdByCode = async (code: string): Promise<boolean> => {
+    triggerHaptic('heavy');
+    const cloudData = await cloudSync.fetchHouseholdByCode(code);
+
+    if (cloudData && cloudData.household) {
+      storage.saveHousehold(cloudData.household);
+      if (cloudData.users) storage.saveUsers(cloudData.users);
+      if (cloudData.tasks) storage.saveTasks(cloudData.tasks);
+      if (cloudData.counters) storage.saveCounters(cloudData.counters);
+      if (cloudData.activityLogs) storage.saveActivityLogs(cloudData.activityLogs);
+      if (cloudData.rouletteItems) storage.saveRouletteItems(cloudData.rouletteItems);
+
+      // Set partner 2 role for joining user
+      if (cloudData.users && cloudData.users[1]) {
+        storage.setActiveUserId(cloudData.users[1].id);
+        localStorage.setItem('duodone_user_role', 'p2');
+      }
+
+      setHousehold(cloudData.household);
+      setUsers(cloudData.users || []);
+      setTasks(cloudData.tasks || []);
+      setCounters(cloudData.counters || []);
+      setActivityLogs(cloudData.activityLogs || []);
+      setRouletteItems(cloudData.rouletteItems || []);
+
+      cloudSync.subscribeToHousehold(cloudData.household.invite_code, (newCloudData: CloudState) => {
+        if (newCloudData) {
+          if (newCloudData.household) setHousehold(newCloudData.household);
+          if (newCloudData.users) setUsers(newCloudData.users);
+          if (newCloudData.tasks) setTasks(newCloudData.tasks);
+          if (newCloudData.counters) setCounters(newCloudData.counters);
+          if (newCloudData.activityLogs) setActivityLogs(newCloudData.activityLogs);
+          if (newCloudData.rouletteItems) setRouletteItems(newCloudData.rouletteItems);
+        }
+      });
+
+      return true;
+    }
+
+    return false;
   };
 
   return (
@@ -292,6 +435,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         deleteRouletteItem: handleDeleteRouletteItem,
         resetCycle: handleResetCycle,
         factoryReset: handleFactoryReset,
+        joinHouseholdByCode,
       }}
     >
       {children}

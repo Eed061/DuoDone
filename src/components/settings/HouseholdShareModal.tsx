@@ -6,12 +6,30 @@ import { triggerSuccessHaptic, openTelegramLink } from '../../services/telegram'
 import { EditUserModal } from '../layout/EditUserModal';
 
 export const HouseholdShareModal: React.FC = () => {
-  const { household, updateHousehold, users, resetCycle, factoryReset, language, t } = useApp();
+  const { household, updateHousehold, users, resetCycle, factoryReset, language, t, joinHouseholdByCode } = useApp();
   const [copiedCard, setCopiedCard] = useState(false);
   const [nameInput, setNameInput] = useState(household.name || 'Наш дім');
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [showFactoryConfirm, setShowFactoryConfirm] = useState(false);
   const [showResetCycleConfirm, setShowResetCycleConfirm] = useState(false);
+  const [joinCodeInput, setJoinCodeInput] = useState('');
+  const [joinStatus, setJoinStatus] = useState<{ success?: boolean; msg?: string } | null>(null);
+  const [isJoining, setIsJoining] = useState(false);
+
+  const handleJoinByCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!joinCodeInput.trim()) return;
+    setIsJoining(true);
+    setJoinStatus(null);
+    const success = await joinHouseholdByCode(joinCodeInput.trim());
+    setIsJoining(false);
+    if (success) {
+      setJoinStatus({ success: true, msg: t('hsm_join_success') });
+      setJoinCodeInput('');
+    } else {
+      setJoinStatus({ success: false, msg: t('hsm_join_error') });
+    }
+  };
 
   const rawUser1Name = users[0]?.first_name || 'Партнер 1';
   const rawUser2Name = users[1]?.first_name || 'Партнер 2';
@@ -228,6 +246,34 @@ export const HouseholdShareModal: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Join Household by Code Form */}
+        <form onSubmit={handleJoinByCode} className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-700/50 space-y-2">
+          <label className="text-[11px] font-semibold text-slate-300 flex items-center justify-between">
+            <span>{t('hsm_join_code_label')}</span>
+          </label>
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              value={joinCodeInput}
+              onChange={(e) => setJoinCodeInput(e.target.value)}
+              placeholder={t('hsm_join_code_ph')}
+              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white uppercase placeholder:normal-case placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={isJoining || !joinCodeInput.trim()}
+              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all"
+            >
+              {isJoining ? '...' : t('hsm_join_btn')}
+            </button>
+          </div>
+          {joinStatus && (
+            <p className={`text-xs font-semibold mt-1 ${joinStatus.success ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {joinStatus.msg}
+            </p>
+          )}
+        </form>
       </div>
 
       {showEditUserModal && <EditUserModal onClose={() => setShowEditUserModal(false)} />}
