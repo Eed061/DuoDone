@@ -163,9 +163,16 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                   required
                 />
-                <div className="flex items-center space-x-1 text-[10px] text-slate-400 pt-0.5">
-                  <ShieldCheck className="w-3 h-3 text-indigo-400" />
-                  <span>TG ID: {user1.telegram_id || t('tg_id_bound')}</span>
+                <div className="flex flex-col text-[10px] text-slate-400 pt-0.5 space-y-0.5">
+                  <div className="flex items-center space-x-1">
+                    <ShieldCheck className="w-3 h-3 text-indigo-400" />
+                    <span>ID: <code className="text-indigo-300 font-mono">{user1.id}</code></span>
+                  </div>
+                  {user1.telegram_id && (
+                    <div className="text-[9px] text-slate-500 font-mono">
+                      TG: {user1.telegram_username ? `@${user1.telegram_username}` : user1.telegram_id}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -211,9 +218,16 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                   required
                 />
-                <div className="flex items-center space-x-1 text-[10px] text-slate-400 pt-0.5">
-                  <ShieldCheck className="w-3 h-3 text-pink-400" />
-                  <span>TG ID: {user2.telegram_id || t('tg_id_invite')}</span>
+                <div className="flex flex-col text-[10px] text-slate-400 pt-0.5 space-y-0.5">
+                  <div className="flex items-center space-x-1">
+                    <ShieldCheck className="w-3 h-3 text-pink-400" />
+                    <span>ID: <code className="text-pink-300 font-mono">{user2.id}</code></span>
+                  </div>
+                  {user2.telegram_id && (
+                    <div className="text-[9px] text-slate-500 font-mono">
+                      TG: {user2.telegram_username ? `@${user2.telegram_username}` : user2.telegram_id}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

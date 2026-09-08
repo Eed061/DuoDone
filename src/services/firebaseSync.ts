@@ -1,26 +1,4 @@
-import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, onValue, set, get, child, off } from 'firebase/database';
 import { Household, Task, Counter, ActivityLog, RouletteItem, User } from '../types';
-
-// Firebase configuration for real-time cloud synchronization
-const firebaseConfig = {
-  apiKey: "AIzaSyD-DuoDoneSyncApiKey2026",
-  authDomain: "duodone-sync.firebaseapp.com",
-  databaseURL: "https://duodone-sync-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "duodone-sync",
-  storageBucket: "duodone-sync.appspot.com",
-  messagingSenderId: "109876543210",
-  appId: "1:109876543210:web:duodone123456789"
-};
-
-let db: any = null;
-
-try {
-  const app = initializeApp(firebaseConfig);
-  db = getDatabase(app);
-} catch (e) {
-  console.warn('Firebase init warning:', e);
-}
 
 export interface CloudState {
   household: Household;
@@ -33,25 +11,23 @@ export interface CloudState {
   updatedByUserId?: string;
 }
 
-let activeListenerRef: any = null;
-let activeListenerCallback: any = null;
+let activePollInterval: any = null;
+let lastKnownUpdatedAt = '';
 
 export class FirebaseSyncService {
-  private isDebouncingPush = false;
   private pushTimer: any = null;
 
   public sanitizeCode(code: string): string {
     return (code || 'DUO-7789').toUpperCase().replace(/[^A-Z0-9-]/g, '');
   }
 
-  // Push current household state to cloud
+  // Push current household state to cloud (Dual Vercel API + REST Store)
   public pushState(state: Omit<CloudState, 'updatedAt'>): void {
-    if (!db || !state.household?.invite_code) return;
+    if (!state.household?.invite_code) return;
 
-    // Debounce rapid local edits (e.g. typing names or multiple taps)
     if (this.pushTimer) clearTimeout(this.pushTimer);
 
-    this.pushTimer = setTimeout(() => {
+    this.pushTimer = setTimeout(async () => {
       try {
         const code = this.sanitizeCode(state.household.invite_code);
         const dataToSave: CloudState = {
@@ -59,66 +35,91 @@ export class FirebaseSyncService {
           updatedAt: new Date().toISOString(),
         };
 
-        const dbRef = ref(db, `households/${code}`);
-        set(dbRef, dataToSave).catch((err) => {
-          console.error('Cloud sync push error:', err);
-        });
+        lastKnownUpdatedAt = dataToSave.updatedAt;
+
+        // 1. Send to Vercel serverless endpoint
+        fetch(`/api/sync?code=${code}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dataToSave),
+        }).catch(() => {});
+
+        // 2. Backup send to secondary global REST API
+        fetch('https://api.restful-api.dev/objects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'DUODONE_HH_' + code, data: dataToSave }),
+        }).catch(() => {});
       } catch (err) {
-        console.error('Cloud sync error:', err);
+        console.warn('Cloud push warning:', err);
       }
-    }, 200);
+    }, 250);
   }
 
   // Fetch household state from cloud by invite code
   public async fetchHouseholdByCode(inviteCode: string): Promise<CloudState | null> {
-    if (!db || !inviteCode) return null;
+    if (!inviteCode) return null;
+    const code = this.sanitizeCode(inviteCode);
+
+    // 1. Try Vercel Serverless Endpoint
     try {
-      const code = this.sanitizeCode(inviteCode);
-      const dbRef = ref(db);
-      const snapshot = await get(child(dbRef, `households/${code}`));
-      if (snapshot.exists()) {
-        return snapshot.val() as CloudState;
+      const res = await fetch(`/api/sync?code=${code}`);
+      if (res.ok) {
+        const data = (await res.json()) as CloudState;
+        if (data && data.household) {
+          if (data.updatedAt) lastKnownUpdatedAt = data.updatedAt;
+          return data;
+        }
       }
-      return null;
+    } catch {}
+
+    // 2. Try Secondary REST Backup Store
+    try {
+      const res = await fetch('https://api.restful-api.dev/objects');
+      if (res.ok) {
+        const objects: any[] = await res.json();
+        const found = objects
+          .reverse()
+          .find((o: any) => o.name === 'DUODONE_HH_' + code && o.data && o.data.household);
+
+        if (found && found.data) {
+          const data = found.data as CloudState;
+          if (data.updatedAt) lastKnownUpdatedAt = data.updatedAt;
+          return data;
+        }
+      }
     } catch (err) {
-      console.error('Fetch household cloud error:', err);
-      return null;
+      console.warn('Fetch backup error:', err);
     }
+
+    return null;
   }
 
-  // Subscribe to real-time changes for a household
+  // Subscribe to real-time changes for a household (Polling Engine)
   public subscribeToHousehold(inviteCode: string, onUpdate: (data: CloudState) => void): void {
-    if (!db || !inviteCode) return;
-    try {
-      const code = this.sanitizeCode(inviteCode);
-      const dbRef = ref(db, `households/${code}`);
+    if (!inviteCode) return;
+    const code = this.sanitizeCode(inviteCode);
 
-      if (activeListenerRef && activeListenerCallback) {
-        off(activeListenerRef, 'value', activeListenerCallback);
-      }
+    this.unsubscribe();
 
-      activeListenerRef = dbRef;
-      activeListenerCallback = (snapshot: any) => {
-        if (snapshot.exists()) {
-          const val = snapshot.val() as CloudState;
-          onUpdate(val);
+    activePollInterval = setInterval(async () => {
+      try {
+        const freshData = await this.fetchHouseholdByCode(code);
+        if (freshData && freshData.household) {
+          if (freshData.updatedAt && freshData.updatedAt !== lastKnownUpdatedAt) {
+            lastKnownUpdatedAt = freshData.updatedAt;
+            onUpdate(freshData);
+          }
         }
-      };
-
-      onValue(dbRef, activeListenerCallback);
-    } catch (err) {
-      console.error('Realtime subscription error:', err);
-    }
+      } catch {}
+    }, 2500);
   }
 
   // Stop active listener
   public unsubscribe(): void {
-    if (activeListenerRef && activeListenerCallback) {
-      try {
-        off(activeListenerRef, 'value', activeListenerCallback);
-      } catch {}
-      activeListenerRef = null;
-      activeListenerCallback = null;
+    if (activePollInterval) {
+      clearInterval(activePollInterval);
+      activePollInterval = null;
     }
   }
 }

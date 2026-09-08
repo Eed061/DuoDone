@@ -392,6 +392,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       // Set partner 2 role for joining user
       if (cloudData.users && cloudData.users[1]) {
         storage.setActiveUserId(cloudData.users[1].id);
+        setActiveUserId(cloudData.users[1].id);
         localStorage.setItem('duodone_user_role', 'p2');
       }
 

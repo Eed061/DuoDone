@@ -45,8 +45,23 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({ initialPoolType = 
     periodWinner = user2;
   }
 
-  // Filter items for selected pool
-  const activeSectors = rouletteItems.filter((i) => i.type === selectedPoolType);
+  // Filter items for selected pool with fallback guarantee to prevent empty/black wheel
+  let activeSectors = rouletteItems.filter((i) => i.type === selectedPoolType);
+  if (activeSectors.length === 0) {
+    activeSectors = selectedPoolType === 'reward'
+      ? [
+          { id: 'r1', household_id: household.id || 'hh', type: 'reward', text: 'Масаж спини 25 хв', is_default: true },
+          { id: 'r2', household_id: household.id || 'hh', type: 'reward', text: 'Кава у ліжко ☕', is_default: true },
+          { id: 'r3', household_id: household.id || 'hh', type: 'reward', text: 'Вибір фільму 🎬', is_default: true },
+          { id: 'r4', household_id: household.id || 'hh', type: 'reward', text: 'День відпочинку 🏖️', is_default: true },
+        ]
+      : [
+          { id: 'p1', household_id: household.id || 'hh', type: 'penalty', text: 'Миття посуду 3 дні 🥣', is_default: true },
+          { id: 'p2', household_id: household.id || 'hh', type: 'penalty', text: 'Закуп у супермаркеті 🛒', is_default: true },
+          { id: 'p3', household_id: household.id || 'hh', type: 'penalty', text: 'Приготування вечері 🍲', is_default: true },
+          { id: 'p4', household_id: household.id || 'hh', type: 'penalty', text: 'Миття взуття 👟', is_default: true },
+        ];
+  }
 
   const colors = [
     '#6366f1', '#ec4899', '#10b981', '#f59e0b',
