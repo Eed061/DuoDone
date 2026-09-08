@@ -3,15 +3,17 @@ import { useApp } from '../../context/AppContext';
 import { translateEntityTitle } from '../../i18n/translations';
 import { Users, Edit3, ChevronDown, Plus, Check, Home, ShieldCheck } from 'lucide-react';
 import { EditUserModal } from './EditUserModal';
+import { CreateSpaceModal } from './CreateSpaceModal';
 
 export const Header: React.FC = () => {
-  const { household, householdsList, switchHousehold, createNewHousehold, activeUser, partnerUser, language, t } = useApp();
+  const { household, householdsList, switchHousehold, activeUser, partnerUser, language, t } = useApp();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSpaceDropdown, setShowSpaceDropdown] = useState(false);
+  const [showCreateSpaceModal, setShowCreateSpaceModal] = useState(false);
 
-  const handleCreateSpace = async () => {
+  const handleCreateSpace = () => {
     setShowSpaceDropdown(false);
-    await createNewHousehold();
+    setShowCreateSpaceModal(true);
   };
 
   const handleSelectSpace = (hhId: string) => {
@@ -146,6 +148,7 @@ export const Header: React.FC = () => {
       </header>
 
       {showEditModal && <EditUserModal onClose={() => setShowEditModal(false)} />}
+      {showCreateSpaceModal && <CreateSpaceModal onClose={() => setShowCreateSpaceModal(false)} />}
     </>
   );
 };

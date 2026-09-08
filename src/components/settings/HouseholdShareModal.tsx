@@ -4,18 +4,19 @@ import { translateEntityTitle } from '../../i18n/translations';
 import { Copy, Check, Users, Edit3, RotateCcw, RefreshCw, AlertTriangle, ArrowRight, Send, Plus, ShieldCheck, Lock } from 'lucide-react';
 import { triggerSuccessHaptic, openTelegramLink } from '../../services/telegram';
 import { EditUserModal } from '../layout/EditUserModal';
+import { CreateSpaceModal } from '../layout/CreateSpaceModal';
 
 export const HouseholdShareModal: React.FC = () => {
-  const { household, updateHousehold, users, resetCycle, factoryReset, createNewHousehold, language, t, joinHouseholdByCode } = useApp();
+  const { household, updateHousehold, users, resetCycle, factoryReset, language, t, joinHouseholdByCode } = useApp();
   const [copiedCard, setCopiedCard] = useState(false);
   const [nameInput, setNameInput] = useState(household.name || 'Наш дім');
   const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [showCreateSpaceModal, setShowCreateSpaceModal] = useState(false);
   const [showFactoryConfirm, setShowFactoryConfirm] = useState(false);
   const [showResetCycleConfirm, setShowResetCycleConfirm] = useState(false);
   const [joinCodeInput, setJoinCodeInput] = useState('');
   const [joinStatus, setJoinStatus] = useState<{ success?: boolean; msg?: string } | null>(null);
   const [isJoining, setIsJoining] = useState(false);
-  const [isCreatingSpace, setIsCreatingSpace] = useState(false);
 
   const handleJoinByCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,10 +34,8 @@ export const HouseholdShareModal: React.FC = () => {
     }
   };
 
-  const handleCreateNewSpace = async () => {
-    setIsCreatingSpace(true);
-    await createNewHousehold();
-    setIsCreatingSpace(false);
+  const handleCreateNewSpace = () => {
+    setShowCreateSpaceModal(true);
   };
 
   const rawUser1Name = users[0]?.first_name || 'Партнер 1';
@@ -150,8 +149,7 @@ export const HouseholdShareModal: React.FC = () => {
         {/* Multi-Space Quick Creation Button */}
         <button
           onClick={handleCreateNewSpace}
-          disabled={isCreatingSpace}
-          className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-md active:scale-95 transition-all disabled:opacity-50"
+          className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-md active:scale-95 transition-all"
         >
           <Plus className="w-4 h-4" />
           <span>{t('hsm_space_create_btn')}</span>
@@ -305,6 +303,7 @@ export const HouseholdShareModal: React.FC = () => {
       </div>
 
       {showEditUserModal && <EditUserModal onClose={() => setShowEditUserModal(false)} />}
+      {showCreateSpaceModal && <CreateSpaceModal onClose={() => setShowCreateSpaceModal(false)} />}
     </>
   );
 };

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { User, Household, Task, Counter, ActivityLog, RouletteItem } from '../types';
-import { storage } from '../services/storage';
+import { storage, defaultTasks, defaultCounters, defaultRouletteItems, defaultUsers } from '../services/storage';
 import { cloudSync, CloudState } from '../services/firebaseSync';
 import { triggerHaptic, triggerSuccessHaptic, initTelegramWebApp, getTelegramUser } from '../services/telegram';
 import { Language, getTranslation } from '../i18n/translations';
@@ -403,11 +403,68 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const handleCreateNewHousehold = async (name?: string): Promise<Household> => {
     triggerSuccessHaptic();
     const newHh = storage.createNewHouseholdSpace(name, activeUser.id);
+
+    // Fresh users state: Creator is User 1 (p1), Partner 2 is unjoined (waiting)
+    const freshUsers: User[] = [
+      {
+        id: activeUser.id || 'user-he-101',
+        first_name: activeUser.first_name || 'Партнер 1',
+        telegram_id: activeUser.telegram_id,
+        telegram_username: activeUser.telegram_username,
+        avatar_url: activeUser.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg?seed=Dmitry&backgroundColor=b6e3f4',
+        created_at: activeUser.created_at || new Date().toISOString(),
+      },
+      {
+        id: `usr-partner-2-${Date.now()}`,
+        first_name: 'Партнер',
+        avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Elena&backgroundColor=ffdfbf',
+        created_at: new Date().toISOString(),
+      },
+    ];
+
+    const freshTasks = defaultTasks.map((t) => ({
+      ...t,
+      id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      household_id: newHh.id,
+      current_turn_user_id: freshUsers[0].id,
+    }));
+
+    const freshCounters = defaultCounters.map((c) => ({
+      ...c,
+      id: `cnt-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      household_id: newHh.id,
+      created_by_user_id: freshUsers[0].id,
+      total_count: 0,
+    }));
+
+    const freshRoulette = defaultRouletteItems.map((r) => ({
+      ...r,
+      id: `roul-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      household_id: newHh.id,
+    }));
+
+    const freshLogs: ActivityLog[] = [];
+
+    storage.saveHousehold(newHh);
+    storage.saveHouseholdToList(newHh);
+    storage.saveUsers(freshUsers);
+    storage.saveTasks(freshTasks);
+    storage.saveCounters(freshCounters);
+    storage.saveRouletteItems(freshRoulette);
+    storage.saveActivityLogs(freshLogs);
+    storage.setActiveUserId(freshUsers[0].id);
+
     const updatedList = storage.getHouseholdsList();
     setHouseholdsList(updatedList);
     setHousehold(newHh);
+    setUsers(freshUsers);
+    setActiveUserId(freshUsers[0].id);
+    setTasks(freshTasks);
+    setCounters(freshCounters);
+    setRouletteItems(freshRoulette);
+    setActivityLogs(freshLogs);
 
-    pushStateToCloud(newHh, users, tasks, counters, activityLogs, rouletteItems);
+    pushStateToCloud(newHh, freshUsers, freshTasks, freshCounters, freshLogs, freshRoulette);
 
     if (newHh.invite_code) {
       cloudSync.subscribeToHousehold(newHh.invite_code, (cloudData: CloudState) => {

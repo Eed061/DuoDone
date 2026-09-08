@@ -12,7 +12,7 @@ const STORAGE_KEYS = {
 };
 
 // Seed default users
-const defaultUsers: User[] = [
+export const defaultUsers: User[] = [
   {
     id: 'user-he-101',
     first_name: 'Партнер 1',
@@ -30,7 +30,7 @@ const defaultUsers: User[] = [
 ];
 
 // Seed default household space
-const defaultHousehold: Household = {
+export const defaultHousehold: Household = {
   id: 'hh-main-001',
   name: 'Наш затишний дім',
   invite_code: 'DUO-7789',
@@ -44,7 +44,7 @@ const defaultHousehold: Household = {
 };
 
 // Seed default DuoDone tasks (Section 6 of ТЗ)
-const defaultTasks: Task[] = [
+export const defaultTasks: Task[] = [
   {
     id: 'task-dishes-1',
     household_id: 'hh-main-001',
@@ -100,7 +100,7 @@ const defaultTasks: Task[] = [
 ];
 
 // Seed default counters (Section 6 of ТЗ)
-const defaultCounters: Counter[] = [
+export const defaultCounters: Counter[] = [
   {
     id: 'counter-windows-1',
     household_id: 'hh-main-001',
@@ -140,7 +140,7 @@ const defaultCounters: Counter[] = [
 ];
 
 // Seed default roulette sectors (Section 6 of ТЗ)
-const defaultRouletteItems: RouletteItem[] = [
+export const defaultRouletteItems: RouletteItem[] = [
   {
     id: 'roul-r1',
     household_id: 'hh-main-001',
