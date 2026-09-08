@@ -20,6 +20,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const code = String(rawCode).toUpperCase().replace(/[^A-Z0-9-]/g, '');
   const requestingUserId = (req.query.userId as string) || (req.body && req.body.requestingUserId);
+  const requestingTgId = (req.query.tgId as string) || (req.body && req.body.requestingTgId);
+  const requestingTgUsername = (req.query.tgUsername as string) || (req.body && req.body.requestingTgUsername);
 
   if (req.method === 'POST') {
     try {
@@ -34,13 +36,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const realMembers = existingData.users.filter((u: any) => !u.is_placeholder);
         
         if (realMembers.length >= 2) {
-          const realMemberIds = realMembers.map((u: any) => String(u.id));
           const realMemberTgIds = realMembers.map((u: any) => String(u.telegram_id || ''));
+          const realMemberTgUsernames = realMembers.map((u: any) => String(u.telegram_username || '').replace('@', '').toLowerCase());
+          
+          let isAuthorized = false;
 
-          const isAuthorized = requestingUserId && (
-            realMemberIds.includes(String(requestingUserId)) ||
-            realMemberTgIds.includes(String(requestingUserId))
-          );
+          if (requestingTgId && realMemberTgIds.includes(String(requestingTgId))) {
+            isAuthorized = true;
+          } else if (requestingTgUsername && requestingTgUsername !== '' && realMemberTgUsernames.includes(String(requestingTgUsername).toLowerCase())) {
+            isAuthorized = true;
+          } else if (!requestingTgId && !requestingTgUsername && requestingUserId) {
+            const matchedMember = realMembers.find((u: any) => String(u.id) === String(requestingUserId));
+            if (matchedMember && !matchedMember.telegram_id) {
+              isAuthorized = true;
+            }
+          }
 
           if (!isAuthorized) {
             return res.status(403).json({
@@ -104,13 +114,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const realMembers = (memoryData.users || []).filter((u: any) => !u.is_placeholder);
       
       if (realMembers.length >= 2) {
-        const realMemberIds = realMembers.map((u: any) => String(u.id));
         const realMemberTgIds = realMembers.map((u: any) => String(u.telegram_id || ''));
+        const realMemberTgUsernames = realMembers.map((u: any) => String(u.telegram_username || '').replace('@', '').toLowerCase());
+        
+        let isAuthorized = false;
 
-        const isAuthorized = requestingUserId && (
-          realMemberIds.includes(String(requestingUserId)) ||
-          realMemberTgIds.includes(String(requestingUserId))
-        );
+        if (requestingTgId && realMemberTgIds.includes(String(requestingTgId))) {
+          isAuthorized = true;
+        } else if (requestingTgUsername && requestingTgUsername !== '' && realMemberTgUsernames.includes(String(requestingTgUsername).toLowerCase())) {
+          isAuthorized = true;
+        } else if (!requestingTgId && !requestingTgUsername && requestingUserId) {
+          const matchedMember = realMembers.find((u: any) => String(u.id) === String(requestingUserId));
+          if (matchedMember && !matchedMember.telegram_id) {
+            isAuthorized = true;
+          }
+        }
 
         if (!isAuthorized) {
           return res.status(403).json({

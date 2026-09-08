@@ -378,9 +378,16 @@ class StorageService {
     return list;
   }
 
-  public createNewHouseholdSpace(name?: string, ownerUserId?: string): Household {
+  public createNewHouseholdSpace(
+    name?: string,
+    ownerUserId?: string,
+    ownerTgUser?: { id: number | string; first_name?: string; username?: string }
+  ): Household {
     const randomCodeSuffix = Math.floor(1000 + Math.random() * 9000);
     const code = `DUO-${randomCodeSuffix}`;
+    const u1Id = ownerUserId || `usr-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    const u2Id = `usr-partner-2-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+
     const newHousehold: Household = {
       id: `hh-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       name: name || `Простір #${randomCodeSuffix}`,
@@ -391,13 +398,60 @@ class StorageService {
       reward_type: 'roulette',
       created_at: new Date().toISOString(),
       show_balancer_widget: true,
-      owner_user_id: ownerUserId,
+      owner_user_id: u1Id,
       is_locked: false,
-      members: ownerUserId ? [{ userId: ownerUserId, role: 'p1', joinedAt: new Date().toISOString() }] : [],
+      members: [{ userId: u1Id, role: 'p1', joinedAt: new Date().toISOString() }],
     };
+
+    const freshUsers: User[] = [
+      {
+        id: u1Id,
+        first_name: ownerTgUser?.first_name || 'Партнер 1',
+        telegram_id: ownerTgUser?.id || null,
+        telegram_username: ownerTgUser?.username || null,
+        avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Dmitry&backgroundColor=b6e3f4',
+        is_placeholder: false,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: u2Id,
+        first_name: 'Партнер',
+        avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Elena&backgroundColor=ffdfbf',
+        is_placeholder: true,
+        created_at: new Date().toISOString(),
+      },
+    ];
+
+    const freshTasks = defaultTasks.map((t) => ({
+      ...t,
+      id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      household_id: newHousehold.id,
+      current_turn_user_id: u1Id,
+    }));
+
+    const freshCounters = defaultCounters.map((c) => ({
+      ...c,
+      id: `cnt-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      household_id: newHousehold.id,
+      created_by_user_id: u1Id,
+      total_count: 0,
+    }));
+
+    const freshRoulette = defaultRouletteItems.map((r) => ({
+      ...r,
+      id: `roul-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      household_id: newHousehold.id,
+    }));
 
     this.saveHousehold(newHousehold);
     this.saveHouseholdToList(newHousehold);
+    this.saveUsers(freshUsers);
+    this.setActiveUserId(u1Id);
+    this.saveTasks(freshTasks);
+    this.saveCounters(freshCounters);
+    this.saveRouletteItems(freshRoulette);
+    this.saveActivityLogs([]);
+
     return newHousehold;
   }
 

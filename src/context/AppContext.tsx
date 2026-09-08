@@ -118,11 +118,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const isInvitedPartner = fullStart.includes('accept') || fullStart.includes('join') || roleParam === 'p2' || Boolean(extractedCode);
     const activeUId = storage.getActiveUserId();
 
+    const currentTgId = telegramUser?.id ? String(telegramUser.id) : '';
+    const currentTgUsername = telegramUser?.username ? String(telegramUser.username).replace('@', '').toLowerCase() : '';
+
     // If invited by code, check pair access control before loading
     if (extractedCode) {
-      const access = await cloudSync.checkSpaceAccess(extractedCode, activeUId);
+      const access = await cloudSync.checkSpaceAccess(extractedCode, activeUId, currentTgId, currentTgUsername);
       if (access.allowed) {
-        const cloudData = await cloudSync.fetchHouseholdByCode(extractedCode, activeUId);
+        const cloudData = await cloudSync.fetchHouseholdByCode(extractedCode, activeUId, currentTgId, currentTgUsername);
         if (cloudData && cloudData.household) {
           storedHousehold = cloudData.household;
           storedUsers = cloudData.users || storedUsers;
@@ -132,31 +135,51 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           if (cloudData.counters) storage.saveCounters(cloudData.counters);
           if (cloudData.activityLogs) storage.saveActivityLogs(cloudData.activityLogs);
           if (cloudData.rouletteItems) storage.saveRouletteItems(cloudData.rouletteItems);
+        } else {
+          // Cloud fetch failed or denied -> create user's own new isolated space
+          storedHousehold = storage.createNewHouseholdSpace(`${telegramUser?.first_name || 'Моя'} пара`, undefined, telegramUser || undefined);
+          storedUsers = storage.getUsers();
         }
       } else {
         // Access denied (Space is full 2/2 or user not authorized)
         // Reset to user's own new isolated space
-        storedHousehold = storage.createNewHouseholdSpace('Моя пара');
+        storedHousehold = storage.createNewHouseholdSpace(`${telegramUser?.first_name || 'Моя'} пара`, undefined, telegramUser || undefined);
         storedUsers = storage.getUsers();
       }
     }
 
     if (telegramUser && storedUsers.length >= 1) {
-      const currentTgId = telegramUser.id;
-      const currentTgUsername = telegramUser.username ? telegramUser.username.replace('@', '').toLowerCase() : '';
-
-      const u1TgId = storedUsers[0]?.telegram_id;
+      const u1TgId = storedUsers[0]?.telegram_id ? String(storedUsers[0].telegram_id) : '';
       const u1TgUsername = storedUsers[0]?.telegram_username ? String(storedUsers[0].telegram_username).replace('@', '').toLowerCase() : '';
 
-      const u2TgId = storedUsers[1]?.telegram_id;
+      const u2TgId = storedUsers[1]?.telegram_id ? String(storedUsers[1].telegram_id) : '';
       const u2TgUsername = storedUsers[1]?.telegram_username ? String(storedUsers[1].telegram_username).replace('@', '').toLowerCase() : '';
 
-      if (
-        isInvitedPartner && storedUsers[1] && (storedUsers[1].is_placeholder || !u2TgId || String(u2TgId) === String(currentTgId))
-      ) {
+      const isU1 = (u1TgId && u1TgId === currentTgId) || (u1TgUsername && currentTgUsername && u1TgUsername === currentTgUsername);
+      const isU2 = (u2TgId && u2TgId === currentTgId) || (u2TgUsername && currentTgUsername && u2TgUsername === currentTgUsername);
+
+      if (isU1) {
+        // Current user matches Partner 1
+        storedUsers[0].telegram_id = telegramUser.id;
+        if (telegramUser.username) storedUsers[0].telegram_username = telegramUser.username;
+        if (!storedUsers[0].first_name || storedUsers[0].first_name === 'Партнер 1' || storedUsers[0].first_name === 'Користувач') {
+          storedUsers[0].first_name = telegramUser.first_name || 'Партнер 1';
+        }
+        storage.saveUsers(storedUsers);
+        storage.setActiveUserId(storedUsers[0].id);
+        localStorage.setItem('duodone_user_role', 'p1');
+      } else if (isU2) {
+        // Current user matches Partner 2
+        storedUsers[1].telegram_id = telegramUser.id;
+        if (telegramUser.username) storedUsers[1].telegram_username = telegramUser.username;
+        storage.saveUsers(storedUsers);
+        storage.setActiveUserId(storedUsers[1].id);
+        localStorage.setItem('duodone_user_role', 'p2');
+      } else if (isInvitedPartner && storedUsers[1] && (storedUsers[1].is_placeholder || !u2TgId)) {
+        // User joining into open Partner 2 slot
         storedUsers[1] = {
           ...storedUsers[1],
-          telegram_id: currentTgId,
+          telegram_id: telegramUser.id,
           telegram_username: telegramUser.username || storedUsers[1].telegram_username,
           first_name: storedUsers[1].is_placeholder ? (telegramUser.first_name || 'Партнер 2') : storedUsers[1].first_name,
           is_placeholder: false,
@@ -164,37 +187,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         storage.saveUsers(storedUsers);
         storage.setActiveUserId(storedUsers[1].id);
         localStorage.setItem('duodone_user_role', 'p2');
-      } else if (
-        (u2TgId && String(u2TgId) === String(currentTgId)) ||
-        (u2TgUsername && currentTgUsername && u2TgUsername === currentTgUsername)
-      ) {
-        storedUsers[1].telegram_id = currentTgId;
-        if (telegramUser.username) storedUsers[1].telegram_username = telegramUser.username;
-        storage.saveUsers(storedUsers);
-        storage.setActiveUserId(storedUsers[1].id);
-        localStorage.setItem('duodone_user_role', 'p2');
-      } else if (
-        (u1TgId && String(u1TgId) === String(currentTgId)) ||
-        (u1TgUsername && currentTgUsername && u1TgUsername === currentTgUsername) ||
-        !u1TgId
-      ) {
-        storedUsers[0].telegram_id = currentTgId;
+      } else if (!u1TgId && !u1TgUsername) {
+        // Fresh local space with no Telegram ID set yet for Partner 1
+        storedUsers[0].telegram_id = telegramUser.id;
         if (telegramUser.username) storedUsers[0].telegram_username = telegramUser.username;
-        if (!storedUsers[0].first_name || storedUsers[0].first_name === 'Партнер 1') {
+        if (!storedUsers[0].first_name || storedUsers[0].first_name === 'Партнер 1' || storedUsers[0].first_name === 'Користувач') {
           storedUsers[0].first_name = telegramUser.first_name || 'Партнер 1';
         }
         storage.saveUsers(storedUsers);
         storage.setActiveUserId(storedUsers[0].id);
         localStorage.setItem('duodone_user_role', 'p1');
-      } else if (!isInvitedPartner) {
-        // User 3 is entering a household where they are neither Partner 1 nor Partner 2!
-        // DO NOT overwrite Partner 1! Create a brand new space for User 3!
-        storedHousehold = storage.createNewHouseholdSpace(`${telegramUser.first_name || 'Моя'} пара`);
+      } else {
+        // User 3 is NOT Partner 1, NOT Partner 2, and Partner 2 slot is not open!
+        // DO NOT overwrite Partner 1 or Partner 2! Create a new space for User 3!
+        storedHousehold = storage.createNewHouseholdSpace(`${telegramUser.first_name || 'Моя'} пара`, undefined, telegramUser);
         storedUsers = storage.getUsers();
-        storedUsers[0].telegram_id = currentTgId;
-        if (telegramUser.username) storedUsers[0].telegram_username = telegramUser.username;
-        if (telegramUser.first_name) storedUsers[0].first_name = telegramUser.first_name;
-        storage.saveUsers(storedUsers);
         storage.setActiveUserId(storedUsers[0].id);
         localStorage.setItem('duodone_user_role', 'p1');
       }
@@ -277,9 +284,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const activeUser = useMemo(() => {
     const tgUser = getTelegramUser();
-    if (tgUser && users.length >= 2) {
+    if (tgUser && users.length >= 1) {
       const byTgId = users.find((u) => u.telegram_id && String(u.telegram_id) === String(tgUser.id));
       if (byTgId) return byTgId;
+
+      if (tgUser.username) {
+        const byTgUsername = users.find((u) => u.telegram_username && String(u.telegram_username).replace('@', '').toLowerCase() === tgUser.username!.toLowerCase());
+        if (byTgUsername) return byTgUsername;
+      }
     }
 
     const savedRole = localStorage.getItem('duodone_user_role');

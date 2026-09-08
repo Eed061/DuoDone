@@ -57,11 +57,17 @@ export class FirebaseSyncService {
   }
 
   // Check if household space is full (2 members locked) for a 3rd user
-  public async checkSpaceAccess(inviteCode: string, requestingUserId?: string): Promise<{ allowed: boolean; is_locked?: boolean; message?: string }> {
+  public async checkSpaceAccess(
+    inviteCode: string,
+    requestingUserId?: string,
+    requestingTgId?: string | number,
+    requestingTgUsername?: string
+  ): Promise<{ allowed: boolean; is_locked?: boolean; message?: string }> {
     const code = this.sanitizeCode(inviteCode);
     if (!code) return { allowed: true };
     try {
-      const res = await fetch(`/api/sync?code=${code}&action=join_check&userId=${requestingUserId || ''}`);
+      const url = `/api/sync?code=${code}&action=join_check&userId=${requestingUserId || ''}&tgId=${requestingTgId || ''}&tgUsername=${requestingTgUsername || ''}`;
+      const res = await fetch(url);
       if (res.status === 403) {
         const body = await res.json();
         return { allowed: false, is_locked: true, message: body.message };
@@ -71,13 +77,19 @@ export class FirebaseSyncService {
   }
 
   // Fetch household state from cloud by invite code with requestingUserId access control
-  public async fetchHouseholdByCode(inviteCode: string, requestingUserId?: string): Promise<CloudState | null> {
+  public async fetchHouseholdByCode(
+    inviteCode: string,
+    requestingUserId?: string,
+    requestingTgId?: string | number,
+    requestingTgUsername?: string
+  ): Promise<CloudState | null> {
     if (!inviteCode) return null;
     const code = this.sanitizeCode(inviteCode);
 
     // 1. Try Vercel Serverless Endpoint
     try {
-      const res = await fetch(`/api/sync?code=${code}&userId=${requestingUserId || ''}`);
+      const url = `/api/sync?code=${code}&userId=${requestingUserId || ''}&tgId=${requestingTgId || ''}&tgUsername=${requestingTgUsername || ''}`;
+      const res = await fetch(url);
       if (res.status === 403) {
         // Forbidden to 3rd party
         return null;
@@ -104,9 +116,15 @@ export class FirebaseSyncService {
           const data = found.data as CloudState;
           const realMembers = (data.users || []).filter((u: User) => !u.is_placeholder);
           if (realMembers.length >= 2) {
-            const memberIds = realMembers.map((u: User) => String(u.id));
             const memberTgIds = realMembers.map((u: User) => String(u.telegram_id || ''));
-            const isAuth = requestingUserId && (memberIds.includes(String(requestingUserId)) || memberTgIds.includes(String(requestingUserId)));
+            const memberTgUsernames = realMembers.map((u: User) => String(u.telegram_username || '').replace('@', '').toLowerCase());
+            let isAuth = false;
+            if (requestingTgId && memberTgIds.includes(String(requestingTgId))) isAuth = true;
+            else if (requestingTgUsername && memberTgUsernames.includes(String(requestingTgUsername).toLowerCase())) isAuth = true;
+            else if (!requestingTgId && !requestingTgUsername && requestingUserId) {
+              const m = realMembers.find((u: User) => String(u.id) === String(requestingUserId));
+              if (m && !m.telegram_id) isAuth = true;
+            }
             if (!isAuth) {
               return null;
             }
@@ -127,7 +145,9 @@ export class FirebaseSyncService {
     inviteCode: string,
     requestingUserId: string,
     onUpdate: (data: CloudState) => void,
-    onDenied?: () => void
+    onDenied?: () => void,
+    requestingTgId?: string | number,
+    requestingTgUsername?: string
   ): void {
     if (!inviteCode) return;
     const code = this.sanitizeCode(inviteCode);
@@ -136,7 +156,7 @@ export class FirebaseSyncService {
 
     activePollInterval = setInterval(async () => {
       try {
-        const freshData = await this.fetchHouseholdByCode(code, requestingUserId);
+        const freshData = await this.fetchHouseholdByCode(code, requestingUserId, requestingTgId, requestingTgUsername);
         if (freshData && freshData.household) {
           if (freshData.updatedAt && freshData.updatedAt !== lastKnownUpdatedAt) {
             lastKnownUpdatedAt = freshData.updatedAt;
