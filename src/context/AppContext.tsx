@@ -133,6 +133,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           if (cloudData.activityLogs) storage.saveActivityLogs(cloudData.activityLogs);
           if (cloudData.rouletteItems) storage.saveRouletteItems(cloudData.rouletteItems);
         }
+      } else {
+        // Access denied (Space is full 2/2 or user not authorized)
+        // Reset to user's own new isolated space
+        storedHousehold = storage.createNewHouseholdSpace('Моя пара');
+        storedUsers = storage.getUsers();
       }
     }
 
@@ -147,7 +152,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const u2TgUsername = storedUsers[1]?.telegram_username ? String(storedUsers[1].telegram_username).replace('@', '').toLowerCase() : '';
 
       if (
-        isInvitedPartner && storedUsers[1]
+        isInvitedPartner && storedUsers[1] && (storedUsers[1].is_placeholder || !u2TgId || String(u2TgId) === String(currentTgId))
       ) {
         storedUsers[1] = {
           ...storedUsers[1],
@@ -168,12 +173,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         storage.saveUsers(storedUsers);
         storage.setActiveUserId(storedUsers[1].id);
         localStorage.setItem('duodone_user_role', 'p2');
-      } else {
+      } else if (
+        (u1TgId && String(u1TgId) === String(currentTgId)) ||
+        (u1TgUsername && currentTgUsername && u1TgUsername === currentTgUsername) ||
+        !u1TgId
+      ) {
         storedUsers[0].telegram_id = currentTgId;
         if (telegramUser.username) storedUsers[0].telegram_username = telegramUser.username;
         if (!storedUsers[0].first_name || storedUsers[0].first_name === 'Партнер 1') {
           storedUsers[0].first_name = telegramUser.first_name || 'Партнер 1';
         }
+        storage.saveUsers(storedUsers);
+        storage.setActiveUserId(storedUsers[0].id);
+        localStorage.setItem('duodone_user_role', 'p1');
+      } else if (!isInvitedPartner) {
+        // User 3 is entering a household where they are neither Partner 1 nor Partner 2!
+        // DO NOT overwrite Partner 1! Create a brand new space for User 3!
+        storedHousehold = storage.createNewHouseholdSpace(`${telegramUser.first_name || 'Моя'} пара`);
+        storedUsers = storage.getUsers();
+        storedUsers[0].telegram_id = currentTgId;
+        if (telegramUser.username) storedUsers[0].telegram_username = telegramUser.username;
+        if (telegramUser.first_name) storedUsers[0].first_name = telegramUser.first_name;
         storage.saveUsers(storedUsers);
         storage.setActiveUserId(storedUsers[0].id);
         localStorage.setItem('duodone_user_role', 'p1');
