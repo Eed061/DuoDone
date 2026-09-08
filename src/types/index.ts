@@ -14,6 +14,7 @@ export interface User {
   first_name: string;
   avatar_url?: string;
   role_title?: string; // e.g. "Він", "Вона", "Партнер 1"
+  is_placeholder?: boolean;
   created_at: string;
 }
 

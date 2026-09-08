@@ -222,11 +222,69 @@ class StorageService {
 
   public initStorage(): void {
     if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
-      this.setItem(STORAGE_KEYS.USERS, defaultUsers);
+      const initialUserId = `usr-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+      const initialUsers: User[] = [
+        {
+          id: initialUserId,
+          first_name: 'Партнер 1',
+          role_title: 'Партнер 1',
+          avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Dmitry&backgroundColor=b6e3f4',
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: `usr-partner-2-${Date.now()}`,
+          first_name: 'Партнер',
+          role_title: 'Партнер 2',
+          avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Elena&backgroundColor=ffdfbf',
+          is_placeholder: true,
+          created_at: new Date().toISOString(),
+        },
+      ];
+      this.setItem(STORAGE_KEYS.USERS, initialUsers);
+      this.setItem(STORAGE_KEYS.ACTIVE_USER_ID, initialUserId);
+
+      if (!localStorage.getItem(STORAGE_KEYS.HOUSEHOLD)) {
+        const randomCodeSuffix = Math.floor(1000 + Math.random() * 9000);
+        const uniqueHousehold: Household = {
+          id: `hh-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          name: 'Наш затишний дім',
+          invite_code: `DUO-${randomCodeSuffix}`,
+          duodone_mode: 'balancer',
+          period_type: 'monthly',
+          period_end_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),
+          reward_type: 'roulette',
+          created_at: new Date().toISOString(),
+          show_balancer_widget: true,
+          owner_user_id: initialUserId,
+          is_locked: false,
+          members: [{ userId: initialUserId, role: 'p1', joinedAt: new Date().toISOString() }],
+        };
+        this.setItem(STORAGE_KEYS.HOUSEHOLD, uniqueHousehold);
+        this.setItem(STORAGE_KEYS.HOUSEHOLDS_LIST, [uniqueHousehold]);
+      }
     }
+
     if (!localStorage.getItem(STORAGE_KEYS.HOUSEHOLD)) {
-      this.setItem(STORAGE_KEYS.HOUSEHOLD, defaultHousehold);
+      const randomCodeSuffix = Math.floor(1000 + Math.random() * 9000);
+      const activeUId = this.getActiveUserId();
+      const uniqueHousehold: Household = {
+        id: `hh-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        name: 'Наш затишний дім',
+        invite_code: `DUO-${randomCodeSuffix}`,
+        duodone_mode: 'balancer',
+        period_type: 'monthly',
+        period_end_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),
+        reward_type: 'roulette',
+        created_at: new Date().toISOString(),
+        show_balancer_widget: true,
+        owner_user_id: activeUId,
+        is_locked: false,
+        members: [{ userId: activeUId, role: 'p1', joinedAt: new Date().toISOString() }],
+      };
+      this.setItem(STORAGE_KEYS.HOUSEHOLD, uniqueHousehold);
+      this.setItem(STORAGE_KEYS.HOUSEHOLDS_LIST, [uniqueHousehold]);
     }
+
     if (!localStorage.getItem(STORAGE_KEYS.TASKS)) {
       this.setItem(STORAGE_KEYS.TASKS, defaultTasks);
     }
@@ -240,7 +298,8 @@ class StorageService {
       this.setItem(STORAGE_KEYS.ACTIVITY_LOGS, defaultLogs);
     }
     if (!localStorage.getItem(STORAGE_KEYS.ACTIVE_USER_ID)) {
-      this.setItem(STORAGE_KEYS.ACTIVE_USER_ID, defaultUsers[0].id);
+      const users = this.getUsers();
+      this.setItem(STORAGE_KEYS.ACTIVE_USER_ID, users[0]?.id || 'user-he-101');
     }
   }
 

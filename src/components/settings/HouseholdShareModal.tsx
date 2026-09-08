@@ -45,7 +45,7 @@ export const HouseholdShareModal: React.FC = () => {
 
   const inviteCode = household.invite_code || 'DUO7789';
   const botInviteLink = `https://t.me/DuoDone_bot?start=accept_${inviteCode}`;
-  const isLocked = household.is_locked || users.length >= 2;
+  const isLocked = Boolean(household.is_locked) || users.filter((u) => !u.is_placeholder).length >= 2;
 
   const handleSendTelegramInvite = () => {
     const messageText = t('hsm_invite_msg', { partner: user2Name, link: botInviteLink });

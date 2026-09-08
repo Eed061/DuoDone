@@ -110,56 +110,68 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     const isInvitedPartner = fullStart.includes('accept') || fullStart.includes('join') || roleParam === 'p2' || Boolean(extractedCode);
+    const activeUId = storage.getActiveUserId();
 
-    // If invited by code, attempt to fetch existing household from cloud
+    // If invited by code, check pair access control before loading
     if (extractedCode) {
-      const cloudData = await cloudSync.fetchHouseholdByCode(extractedCode);
-      if (cloudData && cloudData.household) {
-        storedHousehold = cloudData.household;
-        storedUsers = cloudData.users || storedUsers;
-        storage.saveHousehold(storedHousehold);
-        storage.saveUsers(storedUsers);
-        if (cloudData.tasks) storage.saveTasks(cloudData.tasks);
-        if (cloudData.counters) storage.saveCounters(cloudData.counters);
-        if (cloudData.activityLogs) storage.saveActivityLogs(cloudData.activityLogs);
-        if (cloudData.rouletteItems) storage.saveRouletteItems(cloudData.rouletteItems);
+      const access = await cloudSync.checkSpaceAccess(extractedCode, activeUId);
+      if (access.allowed) {
+        const cloudData = await cloudSync.fetchHouseholdByCode(extractedCode);
+        if (cloudData && cloudData.household) {
+          storedHousehold = cloudData.household;
+          storedUsers = cloudData.users || storedUsers;
+          storage.saveHousehold(storedHousehold);
+          storage.saveUsers(storedUsers);
+          if (cloudData.tasks) storage.saveTasks(cloudData.tasks);
+          if (cloudData.counters) storage.saveCounters(cloudData.counters);
+          if (cloudData.activityLogs) storage.saveActivityLogs(cloudData.activityLogs);
+          if (cloudData.rouletteItems) storage.saveRouletteItems(cloudData.rouletteItems);
+        }
       }
     }
 
-    if (telegramUser && storedUsers.length >= 2) {
+    if (telegramUser && storedUsers.length >= 1) {
       const currentTgId = telegramUser.id;
       const currentTgUsername = telegramUser.username ? telegramUser.username.replace('@', '').toLowerCase() : '';
 
-      const u1TgId = storedUsers[0].telegram_id;
-      const u1TgUsername = storedUsers[0].telegram_username ? String(storedUsers[0].telegram_username).replace('@', '').toLowerCase() : '';
+      const u1TgId = storedUsers[0]?.telegram_id;
+      const u1TgUsername = storedUsers[0]?.telegram_username ? String(storedUsers[0].telegram_username).replace('@', '').toLowerCase() : '';
 
-      const u2TgId = storedUsers[1].telegram_id;
-      const u2TgUsername = storedUsers[1].telegram_username ? String(storedUsers[1].telegram_username).replace('@', '').toLowerCase() : '';
+      const u2TgId = storedUsers[1]?.telegram_id;
+      const u2TgUsername = storedUsers[1]?.telegram_username ? String(storedUsers[1].telegram_username).replace('@', '').toLowerCase() : '';
 
       if (
-        isInvitedPartner ||
+        isInvitedPartner && storedUsers[1]
+      ) {
+        storedUsers[1] = {
+          ...storedUsers[1],
+          telegram_id: currentTgId,
+          telegram_username: telegramUser.username || storedUsers[1].telegram_username,
+          first_name: storedUsers[1].is_placeholder ? (telegramUser.first_name || 'Партнер 2') : storedUsers[1].first_name,
+          is_placeholder: false,
+        };
+        storage.saveUsers(storedUsers);
+        storage.setActiveUserId(storedUsers[1].id);
+        localStorage.setItem('duodone_user_role', 'p2');
+      } else if (
         (u2TgId && String(u2TgId) === String(currentTgId)) ||
         (u2TgUsername && currentTgUsername && u2TgUsername === currentTgUsername)
       ) {
         storedUsers[1].telegram_id = currentTgId;
         if (telegramUser.username) storedUsers[1].telegram_username = telegramUser.username;
-        storage.updateUser(storedUsers[1].id, storedUsers[1]);
+        storage.saveUsers(storedUsers);
         storage.setActiveUserId(storedUsers[1].id);
         localStorage.setItem('duodone_user_role', 'p2');
-      } else if (
-        (u1TgId && String(u1TgId) === String(currentTgId)) ||
-        (u1TgUsername && currentTgUsername && u1TgUsername === currentTgUsername) ||
-        !isInvitedPartner
-      ) {
+      } else {
         storedUsers[0].telegram_id = currentTgId;
         if (telegramUser.username) storedUsers[0].telegram_username = telegramUser.username;
-        storage.updateUser(storedUsers[0].id, storedUsers[0]);
+        if (!storedUsers[0].first_name || storedUsers[0].first_name === 'Партнер 1') {
+          storedUsers[0].first_name = telegramUser.first_name || 'Партнер 1';
+        }
+        storage.saveUsers(storedUsers);
         storage.setActiveUserId(storedUsers[0].id);
         localStorage.setItem('duodone_user_role', 'p1');
       }
-    } else if (isInvitedPartner && storedUsers[1]) {
-      storage.setActiveUserId(storedUsers[1].id);
-      localStorage.setItem('duodone_user_role', 'p2');
     }
 
     const savedRole = localStorage.getItem('duodone_user_role');
@@ -506,33 +518,64 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const cloudData = await cloudSync.fetchHouseholdByCode(code);
 
     if (cloudData && cloudData.household) {
+      let updatedUsers = [...(cloudData.users || [])];
+      const tgUser = getTelegramUser();
+      const currentActiveId = activeUserId || `usr-p2-${Date.now()}`;
+
+      if (updatedUsers.length < 2) {
+        updatedUsers.push({
+          id: currentActiveId,
+          first_name: tgUser?.first_name || 'Партнер 2',
+          telegram_id: tgUser?.id,
+          telegram_username: tgUser?.username,
+          is_placeholder: false,
+          created_at: new Date().toISOString(),
+        });
+      } else {
+        updatedUsers[1] = {
+          ...updatedUsers[1],
+          id: currentActiveId,
+          first_name: tgUser?.first_name || (updatedUsers[1].is_placeholder ? 'Партнер 2' : updatedUsers[1].first_name),
+          telegram_id: tgUser?.id || updatedUsers[1].telegram_id,
+          telegram_username: tgUser?.username || updatedUsers[1].telegram_username,
+          is_placeholder: false,
+        };
+      }
+
+      const realUsersCount = updatedUsers.filter((u) => !u.is_placeholder).length;
       const updatedHousehold = {
         ...cloudData.household,
-        is_locked: (cloudData.users || []).length >= 2,
+        is_locked: realUsersCount >= 2,
       };
 
       storage.saveHousehold(updatedHousehold);
       storage.saveHouseholdToList(updatedHousehold);
-      if (cloudData.users) storage.saveUsers(cloudData.users);
+      storage.saveUsers(updatedUsers);
       if (cloudData.tasks) storage.saveTasks(cloudData.tasks);
       if (cloudData.counters) storage.saveCounters(cloudData.counters);
       if (cloudData.activityLogs) storage.saveActivityLogs(cloudData.activityLogs);
       if (cloudData.rouletteItems) storage.saveRouletteItems(cloudData.rouletteItems);
 
-      // Set partner 2 role for joining user
-      if (cloudData.users && cloudData.users[1]) {
-        storage.setActiveUserId(cloudData.users[1].id);
-        setActiveUserId(cloudData.users[1].id);
-        localStorage.setItem('duodone_user_role', 'p2');
-      }
+      storage.setActiveUserId(updatedUsers[1].id);
+      setActiveUserId(updatedUsers[1].id);
+      localStorage.setItem('duodone_user_role', 'p2');
 
       setHousehold(updatedHousehold);
       setHouseholdsList(storage.getHouseholdsList());
-      setUsers(cloudData.users || []);
-      setTasks(cloudData.tasks || []);
-      setCounters(cloudData.counters || []);
-      setActivityLogs(cloudData.activityLogs || []);
-      setRouletteItems(cloudData.rouletteItems || []);
+      setUsers(updatedUsers);
+      if (cloudData.tasks) setTasks(cloudData.tasks);
+      if (cloudData.counters) setCounters(cloudData.counters);
+      if (cloudData.activityLogs) setActivityLogs(cloudData.activityLogs);
+      if (cloudData.rouletteItems) setRouletteItems(cloudData.rouletteItems);
+
+      pushStateToCloud(
+        updatedHousehold,
+        updatedUsers,
+        cloudData.tasks || tasks,
+        cloudData.counters || counters,
+        cloudData.activityLogs || activityLogs,
+        cloudData.rouletteItems || rouletteItems
+      );
 
       cloudSync.subscribeToHousehold(updatedHousehold.invite_code, (newCloudData: CloudState) => {
         if (newCloudData) {

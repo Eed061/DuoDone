@@ -13,7 +13,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  const rawCode = (req.query.code as string) || (req.body && req.body.household && req.body.household.invite_code) || 'DUO-7789';
+  const rawCode = (req.query.code as string) || (req.body && req.body.household && req.body.household.invite_code);
+  if (!rawCode) {
+    return res.status(400).json({ error: 'Missing invite code parameter' });
+  }
+
   const code = String(rawCode).toUpperCase().replace(/[^A-Z0-9-]/g, '');
   const requestingUserId = (req.query.userId as string) || (req.body && req.body.requestingUserId);
 
@@ -24,25 +28,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Invalid payload: missing household' });
       }
 
-      // Check access control if attempting to join as 3rd member
+      // Check access control if 2 real partners are already registered
       const existingData = globalMemoryStore[code];
-      if (existingData && existingData.users && existingData.users.length >= 2) {
-        const existingUserIds = existingData.users.map((u: any) => u.id);
-        const isExistingMember = requestingUserId && existingUserIds.includes(requestingUserId);
+      if (existingData && existingData.users) {
+        const realMembers = existingData.users.filter((u: any) => !u.is_placeholder);
         
-        // If 2 partners are registered and a 3rd new user attempts to overwrite, reject
-        if (!isExistingMember && payload.users && payload.users.length > 2) {
-          return res.status(403).json({
-            error: 'space_full',
-            is_locked: true,
-            message: 'Цей простір вже сформований для 2 партнерів. Створіть свій новий простір!'
-          });
+        if (realMembers.length >= 2) {
+          const realMemberIds = realMembers.map((u: any) => String(u.id));
+          const realMemberTgIds = realMembers.map((u: any) => String(u.telegram_id || ''));
+
+          const isAuthorized = requestingUserId && (
+            realMemberIds.includes(String(requestingUserId)) ||
+            realMemberTgIds.includes(String(requestingUserId))
+          );
+
+          if (!isAuthorized) {
+            return res.status(403).json({
+              error: 'space_full',
+              is_locked: true,
+              message: 'Цей простір вже сформований для 2 партнерів. Створіть свій власний новий простір!'
+            });
+          }
         }
       }
 
-      // Auto-lock household if 2 members present
       const usersList = payload.users || [];
-      const isLocked = usersList.length >= 2;
+      const realUsersCount = usersList.filter((u: any) => !u.is_placeholder).length;
+      const isLocked = realUsersCount >= 2;
 
       const dataToSave = {
         ...payload,
@@ -89,18 +101,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (memoryData) {
-      // Access control check for 3rd party
-      if (req.query.action === 'join_check' && requestingUserId) {
-        const userIds = (memoryData.users || []).map((u: any) => u.id);
-        const isMember = userIds.includes(requestingUserId);
-        if (!isMember && userIds.length >= 2) {
+      const realMembers = (memoryData.users || []).filter((u: any) => !u.is_placeholder);
+      
+      if (realMembers.length >= 2) {
+        const realMemberIds = realMembers.map((u: any) => String(u.id));
+        const realMemberTgIds = realMembers.map((u: any) => String(u.telegram_id || ''));
+
+        const isAuthorized = requestingUserId && (
+          realMemberIds.includes(String(requestingUserId)) ||
+          realMemberTgIds.includes(String(requestingUserId))
+        );
+
+        if (!isAuthorized) {
           return res.status(403).json({
             error: 'space_full',
             is_locked: true,
-            message: 'Цей простір вже сформований для 2 партнерів. Створіть свій новий простір!'
+            message: 'Цей простір вже сформований для 2 партнерів. Створіть свій власний новий простір!'
           });
         }
       }
+
       return res.status(200).json(memoryData);
     }
 
