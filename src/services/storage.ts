@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   ACTIVITY_LOGS: 'duodone_activity_logs',
   ROULETTE_ITEMS: 'duodone_roulette_items',
   ACTIVE_USER_ID: 'duodone_active_user_id',
+  HOUSEHOLDS_LIST: 'duodone_households_list',
 };
 
 // Seed default users
@@ -295,10 +296,57 @@ class StorageService {
     this.setItem(STORAGE_KEYS.ROULETTE_ITEMS, items);
   }
 
+  // Households List (Multi-Space)
+  public getHouseholdsList(): Household[] {
+    const list = this.getItem<Household[]>(STORAGE_KEYS.HOUSEHOLDS_LIST, []);
+    if (list.length === 0) {
+      const current = this.getHousehold();
+      this.setItem(STORAGE_KEYS.HOUSEHOLDS_LIST, [current]);
+      return [current];
+    }
+    return list;
+  }
+
+  public saveHouseholdToList(hh: Household): Household[] {
+    const list = this.getHouseholdsList();
+    const idx = list.findIndex((h) => h.id === hh.id || h.invite_code === hh.invite_code);
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...hh };
+    } else {
+      list.push(hh);
+    }
+    this.setItem(STORAGE_KEYS.HOUSEHOLDS_LIST, list);
+    return list;
+  }
+
+  public createNewHouseholdSpace(name?: string, ownerUserId?: string): Household {
+    const randomCodeSuffix = Math.floor(1000 + Math.random() * 9000);
+    const code = `DUO-${randomCodeSuffix}`;
+    const newHousehold: Household = {
+      id: `hh-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name: name || `Простір #${randomCodeSuffix}`,
+      invite_code: code,
+      duodone_mode: 'balancer',
+      period_type: 'monthly',
+      period_end_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),
+      reward_type: 'roulette',
+      created_at: new Date().toISOString(),
+      show_balancer_widget: true,
+      owner_user_id: ownerUserId,
+      is_locked: false,
+      members: ownerUserId ? [{ userId: ownerUserId, role: 'p1', joinedAt: new Date().toISOString() }] : [],
+    };
+
+    this.saveHousehold(newHousehold);
+    this.saveHouseholdToList(newHousehold);
+    return newHousehold;
+  }
+
   public updateHousehold(updates: Partial<Household>): Household {
     const current = this.getHousehold();
     const updated = { ...current, ...updates };
     this.setItem(STORAGE_KEYS.HOUSEHOLD, updated);
+    this.saveHouseholdToList(updated);
     return updated;
   }
 

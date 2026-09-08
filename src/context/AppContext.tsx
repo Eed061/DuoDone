@@ -10,6 +10,7 @@ interface AppContextType {
   activeUser: User;
   partnerUser: User;
   household: Household;
+  householdsList: Household[];
   tasks: Task[];
   counters: Counter[];
   activityLogs: ActivityLog[];
@@ -21,6 +22,8 @@ interface AppContextType {
   switchActiveUser: (userId: string) => void;
   updateUser: (userId: string, updates: Partial<User>) => void;
   updateHousehold: (updates: Partial<Household>) => void;
+  switchHousehold: (householdId: string) => void;
+  createNewHousehold: (name?: string) => Promise<Household>;
   completeTask: (taskId: string, photoUrl?: string | null) => Promise<void>;
   incrementCounter: (counterId: string, photoUrl?: string | null) => Promise<void>;
   saveTask: (task: Task) => void;
@@ -31,7 +34,7 @@ interface AppContextType {
   deleteRouletteItem: (itemId: string) => void;
   resetCycle: () => void;
   factoryReset: () => void;
-  joinHouseholdByCode: (code: string) => Promise<boolean>;
+  joinHouseholdByCode: (code: string) => Promise<{ success: boolean; reason?: string }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -40,6 +43,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [users, setUsers] = useState<User[]>([]);
   const [activeUserId, setActiveUserId] = useState<string>('');
   const [household, setHousehold] = useState<Household>({} as Household);
+  const [householdsList, setHouseholdsList] = useState<Household[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [counters, setCounters] = useState<Counter[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -169,10 +173,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const loadedCounters = storage.getCounters();
     const loadedLogs = storage.getActivityLogs();
     const loadedRoulette = storage.getRouletteItems();
+    const loadedHouseholdsList = storage.getHouseholdsList();
 
     setUsers(storedUsers);
     setActiveUserId(storage.getActiveUserId());
     setHousehold(storedHousehold);
+    setHouseholdsList(loadedHouseholdsList);
     setTasks(loadedTasks);
     setCounters(loadedCounters);
     setActivityLogs(loadedLogs);
@@ -188,6 +194,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           if (cloudData.household) {
             setHousehold(cloudData.household);
             storage.saveHousehold(cloudData.household);
+            storage.saveHouseholdToList(cloudData.household);
+            setHouseholdsList(storage.getHouseholdsList());
           }
           if (cloudData.users) {
             setUsers(cloudData.users);
@@ -363,6 +371,58 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     pushStateToCloud(updatedHousehold, users, tasks, updatedCounters, [], rouletteItems);
   };
 
+  // Switch Active Space / Household
+  const handleSwitchHousehold = (householdId: string) => {
+    triggerHaptic('medium');
+    const list = storage.getHouseholdsList();
+    const target = list.find((h) => h.id === householdId);
+    if (target) {
+      setHousehold(target);
+      storage.saveHousehold(target);
+      if (target.invite_code) {
+        cloudSync.subscribeToHousehold(target.invite_code, (cloudData: CloudState) => {
+          if (cloudData) {
+            if (cloudData.household) {
+              setHousehold(cloudData.household);
+              storage.saveHousehold(cloudData.household);
+              storage.saveHouseholdToList(cloudData.household);
+              setHouseholdsList(storage.getHouseholdsList());
+            }
+            if (cloudData.users) setUsers(cloudData.users);
+            if (cloudData.tasks) setTasks(cloudData.tasks);
+            if (cloudData.counters) setCounters(cloudData.counters);
+            if (cloudData.activityLogs) setActivityLogs(cloudData.activityLogs);
+            if (cloudData.rouletteItems) setRouletteItems(cloudData.rouletteItems);
+          }
+        });
+      }
+    }
+  };
+
+  // Create New Space / Household
+  const handleCreateNewHousehold = async (name?: string): Promise<Household> => {
+    triggerSuccessHaptic();
+    const newHh = storage.createNewHouseholdSpace(name, activeUser.id);
+    const updatedList = storage.getHouseholdsList();
+    setHouseholdsList(updatedList);
+    setHousehold(newHh);
+
+    pushStateToCloud(newHh, users, tasks, counters, activityLogs, rouletteItems);
+
+    if (newHh.invite_code) {
+      cloudSync.subscribeToHousehold(newHh.invite_code, (cloudData: CloudState) => {
+        if (cloudData && cloudData.household) {
+          setHousehold(cloudData.household);
+          storage.saveHousehold(cloudData.household);
+          storage.saveHouseholdToList(cloudData.household);
+          setHouseholdsList(storage.getHouseholdsList());
+        }
+      });
+    }
+
+    return newHh;
+  };
+
   const handleFactoryReset = () => {
     triggerSuccessHaptic();
     localStorage.clear();
@@ -377,12 +437,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     window.location.reload();
   };
 
-  const joinHouseholdByCode = async (code: string): Promise<boolean> => {
+  const joinHouseholdByCode = async (code: string): Promise<{ success: boolean; reason?: string }> => {
     triggerHaptic('heavy');
+
+    // Access control check for 3rd party
+    const access = await cloudSync.checkSpaceAccess(code, activeUserId);
+    if (!access.allowed) {
+      return { success: false, reason: 'space_full' };
+    }
+
     const cloudData = await cloudSync.fetchHouseholdByCode(code);
 
     if (cloudData && cloudData.household) {
-      storage.saveHousehold(cloudData.household);
+      const updatedHousehold = {
+        ...cloudData.household,
+        is_locked: (cloudData.users || []).length >= 2,
+      };
+
+      storage.saveHousehold(updatedHousehold);
+      storage.saveHouseholdToList(updatedHousehold);
       if (cloudData.users) storage.saveUsers(cloudData.users);
       if (cloudData.tasks) storage.saveTasks(cloudData.tasks);
       if (cloudData.counters) storage.saveCounters(cloudData.counters);
@@ -396,16 +469,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         localStorage.setItem('duodone_user_role', 'p2');
       }
 
-      setHousehold(cloudData.household);
+      setHousehold(updatedHousehold);
+      setHouseholdsList(storage.getHouseholdsList());
       setUsers(cloudData.users || []);
       setTasks(cloudData.tasks || []);
       setCounters(cloudData.counters || []);
       setActivityLogs(cloudData.activityLogs || []);
       setRouletteItems(cloudData.rouletteItems || []);
 
-      cloudSync.subscribeToHousehold(cloudData.household.invite_code, (newCloudData: CloudState) => {
+      cloudSync.subscribeToHousehold(updatedHousehold.invite_code, (newCloudData: CloudState) => {
         if (newCloudData) {
-          if (newCloudData.household) setHousehold(newCloudData.household);
+          if (newCloudData.household) {
+            setHousehold(newCloudData.household);
+            storage.saveHousehold(newCloudData.household);
+            storage.saveHouseholdToList(newCloudData.household);
+            setHouseholdsList(storage.getHouseholdsList());
+          }
           if (newCloudData.users) setUsers(newCloudData.users);
           if (newCloudData.tasks) setTasks(newCloudData.tasks);
           if (newCloudData.counters) setCounters(newCloudData.counters);
@@ -414,10 +493,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
       });
 
-      return true;
+      return { success: true };
     }
 
-    return false;
+    return { success: false, reason: 'not_found' };
   };
 
   return (
@@ -427,6 +506,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         activeUser,
         partnerUser,
         household,
+        householdsList,
         tasks,
         counters,
         activityLogs,
@@ -438,6 +518,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         switchActiveUser,
         updateUser: handleUpdateUser,
         updateHousehold: handleUpdateHousehold,
+        switchHousehold: handleSwitchHousehold,
+        createNewHousehold: handleCreateNewHousehold,
         completeTask: handleCompleteTask,
         incrementCounter: handleIncrementCounter,
         saveTask: handleSaveTask,

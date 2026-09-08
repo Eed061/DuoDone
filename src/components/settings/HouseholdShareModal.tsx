@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { translateEntityTitle } from '../../i18n/translations';
-import { Copy, Check, Users, Edit3, RotateCcw, RefreshCw, AlertTriangle, ArrowRight, Send } from 'lucide-react';
+import { Copy, Check, Users, Edit3, RotateCcw, RefreshCw, AlertTriangle, ArrowRight, Send, Plus, ShieldCheck, Lock } from 'lucide-react';
 import { triggerSuccessHaptic, openTelegramLink } from '../../services/telegram';
 import { EditUserModal } from '../layout/EditUserModal';
 
 export const HouseholdShareModal: React.FC = () => {
-  const { household, updateHousehold, users, resetCycle, factoryReset, language, t, joinHouseholdByCode } = useApp();
+  const { household, updateHousehold, users, resetCycle, factoryReset, createNewHousehold, language, t, joinHouseholdByCode } = useApp();
   const [copiedCard, setCopiedCard] = useState(false);
   const [nameInput, setNameInput] = useState(household.name || 'Наш дім');
   const [showEditUserModal, setShowEditUserModal] = useState(false);
@@ -15,20 +15,28 @@ export const HouseholdShareModal: React.FC = () => {
   const [joinCodeInput, setJoinCodeInput] = useState('');
   const [joinStatus, setJoinStatus] = useState<{ success?: boolean; msg?: string } | null>(null);
   const [isJoining, setIsJoining] = useState(false);
+  const [isCreatingSpace, setIsCreatingSpace] = useState(false);
 
   const handleJoinByCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!joinCodeInput.trim()) return;
     setIsJoining(true);
     setJoinStatus(null);
-    const success = await joinHouseholdByCode(joinCodeInput.trim());
+    const result = await joinHouseholdByCode(joinCodeInput.trim());
     setIsJoining(false);
-    if (success) {
+    if (result.success) {
       setJoinStatus({ success: true, msg: t('hsm_join_success') });
       setJoinCodeInput('');
     } else {
-      setJoinStatus({ success: false, msg: t('hsm_join_error') });
+      const errorMsg = result.reason === 'space_full' ? t('hsm_space_full_error') : t('hsm_join_error');
+      setJoinStatus({ success: false, msg: errorMsg });
     }
+  };
+
+  const handleCreateNewSpace = async () => {
+    setIsCreatingSpace(true);
+    await createNewHousehold();
+    setIsCreatingSpace(false);
   };
 
   const rawUser1Name = users[0]?.first_name || 'Партнер 1';
@@ -38,6 +46,7 @@ export const HouseholdShareModal: React.FC = () => {
 
   const inviteCode = household.invite_code || 'DUO7789';
   const botInviteLink = `https://t.me/DuoDone_bot?start=accept_${inviteCode}`;
+  const isLocked = household.is_locked || users.length >= 2;
 
   const handleSendTelegramInvite = () => {
     const messageText = t('hsm_invite_msg', { partner: user2Name, link: botInviteLink });
@@ -84,12 +93,21 @@ export const HouseholdShareModal: React.FC = () => {
   return (
     <>
       <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-4 shadow-lg space-y-4">
-        <div className="flex items-center space-x-2 border-b border-slate-700/60 pb-3">
-          <Users className="w-5 h-5 text-indigo-400" />
-          <div>
-            <h3 className="font-bold text-white text-base">{t('hsm_title')}</h3>
-            <p className="text-xs text-slate-400">{t('hsm_subtitle')}</p>
+        <div className="flex items-center justify-between border-b border-slate-700/60 pb-3">
+          <div className="flex items-center space-x-2">
+            <Users className="w-5 h-5 text-indigo-400" />
+            <div>
+              <h3 className="font-bold text-white text-base">{t('hsm_title')}</h3>
+              <p className="text-xs text-slate-400">{t('hsm_subtitle')}</p>
+            </div>
           </div>
+          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+            isLocked
+              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+              : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+          }`}>
+            {isLocked ? t('hsm_space_status_locked') : t('hsm_space_status_open')}
+          </span>
         </div>
 
         {/* Rename Partners Section */}
@@ -128,6 +146,16 @@ export const HouseholdShareModal: React.FC = () => {
             </button>
           </div>
         </form>
+
+        {/* Multi-Space Quick Creation Button */}
+        <button
+          onClick={handleCreateNewSpace}
+          disabled={isCreatingSpace}
+          className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-md active:scale-95 transition-all disabled:opacity-50"
+        >
+          <Plus className="w-4 h-4" />
+          <span>{t('hsm_space_create_btn')}</span>
+        </button>
 
         {/* Cycle & Reset Control Buttons */}
         <div className="pt-2 space-y-2 border-t border-slate-700/60">

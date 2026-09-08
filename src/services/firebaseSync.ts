@@ -56,6 +56,19 @@ export class FirebaseSyncService {
     }, 250);
   }
 
+  // Check if household space is full (2 members locked) for a 3rd user
+  public async checkSpaceAccess(inviteCode: string, requestingUserId?: string): Promise<{ allowed: boolean; is_locked?: boolean; message?: string }> {
+    const code = this.sanitizeCode(inviteCode);
+    try {
+      const res = await fetch(`/api/sync?code=${code}&action=join_check&userId=${requestingUserId || ''}`);
+      if (res.status === 403) {
+        const body = await res.json();
+        return { allowed: false, is_locked: true, message: body.message };
+      }
+    } catch {}
+    return { allowed: true };
+  }
+
   // Fetch household state from cloud by invite code
   public async fetchHouseholdByCode(inviteCode: string): Promise<CloudState | null> {
     if (!inviteCode) return null;

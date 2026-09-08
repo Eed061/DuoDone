@@ -27,6 +27,10 @@ export interface Household {
   reward_type: RewardType;
   fixed_reward_text?: string | null;
   created_at: string;
+  // Multi-Space & Access Lock
+  owner_user_id?: string;
+  is_locked?: boolean;
+  members?: { userId: string; role: 'p1' | 'p2'; joinedAt: string }[];
   // Dashboard Config
   show_balancer_widget: boolean;
   pinned_task_ids?: string[];
