@@ -43,19 +43,20 @@ jobs:
 
       - name: Bump versionCode
         run: |
-          VERSION_CODE=$(date +%Y%m%d%H%M)
+          VERSION_CODE=${{ github.run_number }}
           sed -i "s/versionCode [0-9]*/versionCode $VERSION_CODE/" android/app/build.gradle
           echo "versionCode set to $VERSION_CODE"
 
       - name: Build Release AAB
+        env:
+          KEYSTORE_PATH: "duodone-release.keystore"
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease \
-            -Pandroid.injected.signing.store.file=app/duodone-release.keystore \
-            -Pandroid.injected.signing.store.password="${{ secrets.KEYSTORE_PASSWORD }}" \
-            -Pandroid.injected.signing.key.alias="${{ secrets.KEY_ALIAS }}" \
-            -Pandroid.injected.signing.key.password="${{ secrets.KEY_PASSWORD }}"
+          ./gradlew bundleRelease
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
