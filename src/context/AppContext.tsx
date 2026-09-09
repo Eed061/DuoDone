@@ -338,6 +338,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return users.find((u) => u.id !== activeUser.id) || (activeUser.id === users[0]?.id ? users[1] : users[0]) || ({ id: 'partner', first_name: 'Партнер' } as User);
   }, [users, activeUser]);
 
+  // Filter householdsList to only show spaces this user belongs to
+  const filteredHouseholdsList = useMemo(() => {
+    if (!householdsList.length) return householdsList;
+    const myUserIds = new Set(users.map((u) => u.id));
+    const myActiveId = activeUserId;
+
+    return householdsList.filter((hh) => {
+      // Keep if this space's current active household
+      if (hh.id === household.id) return true;
+      // Keep if current user is owner
+      if (hh.owner_user_id && myUserIds.has(hh.owner_user_id)) return true;
+      // Keep if current user is in members list
+      if (hh.members && hh.members.some((m) => myUserIds.has(m.userId))) return true;
+      // Keep if active user ID matches owner (fallback for older records without members)
+      if (hh.owner_user_id === myActiveId) return true;
+      return false;
+    });
+  }, [householdsList, users, activeUserId, household]);
+
   // Calculate XP per user
   const userXpMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -765,7 +784,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         activeUser,
         partnerUser,
         household,
-        householdsList,
+        householdsList: filteredHouseholdsList,
         tasks,
         counters,
         activityLogs,
