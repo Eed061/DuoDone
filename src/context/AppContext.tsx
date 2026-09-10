@@ -24,8 +24,8 @@ interface AppContextType {
   updateHousehold: (updates: Partial<Household>) => void;
   switchHousehold: (householdId: string) => void;
   createNewHousehold: (name?: string) => Promise<Household>;
-  completeTask: (taskId: string, photoUrl?: string | null) => Promise<void>;
-  incrementCounter: (counterId: string, photoUrl?: string | null) => Promise<void>;
+  completeTask: (taskId: string, photoUrl?: string | null, photoUrls?: string[]) => Promise<void>;
+  incrementCounter: (counterId: string, photoUrl?: string | null, photoUrls?: string[]) => Promise<void>;
   saveTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
   saveCounter: (counter: Counter) => void;
@@ -482,9 +482,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     pushStateToCloud(updated, users, tasks, counters, activityLogs, rouletteItems);
   };
 
-  const handleCompleteTask = async (taskId: string, photoUrl?: string | null) => {
+  const handleCompleteTask = async (taskId: string, photoUrl?: string | null, photoUrls?: string[]) => {
     triggerSuccessHaptic();
-    const { task, log } = storage.completeTask(taskId, activeUser.id, photoUrl);
+    const { task, log } = storage.completeTask(taskId, activeUser.id, photoUrl, photoUrls);
 
     const updatedTasks = tasks.map((t) => (t.id === taskId ? task : t));
     const updatedLogs = [log, ...activityLogs];
@@ -496,9 +496,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     window.dispatchEvent(new CustomEvent('duodone_task_completed'));
   };
 
-  const handleIncrementCounter = async (counterId: string, photoUrl?: string | null) => {
+  const handleIncrementCounter = async (counterId: string, photoUrl?: string | null, photoUrls?: string[]) => {
     triggerSuccessHaptic();
-    const { counter, log } = storage.incrementCounter(counterId, activeUser.id, photoUrl);
+    const { counter, log } = storage.incrementCounter(counterId, activeUser.id, photoUrl, photoUrls);
 
     const updatedCounters = counters.map((c) => (c.id === counterId ? counter : c));
     const updatedLogs = [log, ...activityLogs];

@@ -48,45 +48,30 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenRoulette }) =
   const displayedCounters = showAllCounters ? counters : visibleCounters;
 
   // Handle task completion request
-  const handleTaskActionRequest = (task: Task, isOutOfTurn: boolean) => {
-    if (task.photo_required) {
-      setActiveCameraAction({
-        type: 'task',
-        entity: task,
-        photoRequired: true,
-      });
-    } else {
-      // Direct completion without photo requirement
-      completeTask(task.id);
-    }
+  const handleTaskActionRequest = (task: Task, _isOutOfTurn: boolean) => {
+    setActiveCameraAction({
+      type: 'task',
+      entity: task,
+      photoRequired: Boolean(task.photo_required),
+    });
   };
 
   // Handle counter click request
   const handleCounterIncrementRequest = (counter: Counter) => {
-    if (counter.photo_mode === 'required') {
-      setActiveCameraAction({
-        type: 'counter',
-        entity: counter,
-        photoRequired: true,
-      });
-    } else if (counter.photo_mode === 'optional') {
-      setActiveCameraAction({
-        type: 'counter',
-        entity: counter,
-        photoRequired: false,
-      });
-    } else {
-      incrementCounter(counter.id);
-    }
+    setActiveCameraAction({
+      type: 'counter',
+      entity: counter,
+      photoRequired: counter.photo_mode === 'required',
+    });
   };
 
-  const handleCameraConfirm = async (photoUrl?: string | null) => {
+  const handleCameraConfirm = async (photoUrl?: string | null, photoUrls?: string[]) => {
     if (!activeCameraAction) return;
 
     if (activeCameraAction.type === 'task') {
-      await completeTask(activeCameraAction.entity.id, photoUrl);
+      await completeTask(activeCameraAction.entity.id, photoUrl, photoUrls);
     } else {
-      await incrementCounter(activeCameraAction.entity.id, photoUrl);
+      await incrementCounter(activeCameraAction.entity.id, photoUrl, photoUrls);
     }
 
     setActiveCameraAction(null);

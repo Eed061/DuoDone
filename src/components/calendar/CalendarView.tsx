@@ -7,7 +7,7 @@ export const CalendarView: React.FC = () => {
   const { activityLogs, users, language, t } = useApp();
   const [currentMonthDate, setCurrentMonthDate] = useState<Date>(new Date());
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDate());
-  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  const [lightboxPhotos, setLightboxPhotos] = useState<string[] | null>(null);
 
   const year = currentMonthDate.getFullYear();
   const month = currentMonthDate.getMonth();
@@ -183,13 +183,21 @@ export const CalendarView: React.FC = () => {
                     </div>
                   </div>
 
-                  {log.photo_url && (
+                  {(log.photo_urls?.length || log.photo_url) && (
                     <button
-                      onClick={() => setLightboxPhoto(log.photo_url!)}
+                      onClick={() => {
+                        const photos = log.photo_urls && log.photo_urls.length > 0
+                          ? log.photo_urls
+                          : log.photo_url ? [log.photo_url] : [];
+                        setLightboxPhotos(photos);
+                      }}
                       className="flex items-center space-x-1 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-indigo-500/30 transition-all"
                     >
                       <ImageIcon className="w-3.5 h-3.5 text-indigo-400" />
-                      <span>{t('calendar_photo_btn')}</span>
+                      <span>
+                        {t('calendar_photo_btn')}
+                        {log.photo_urls && log.photo_urls.length > 1 ? ` (${log.photo_urls.length})` : ''}
+                      </span>
                     </button>
                   )}
                 </div>
@@ -200,20 +208,29 @@ export const CalendarView: React.FC = () => {
       </div>
 
       {/* Lightbox photo viewer */}
-      {lightboxPhoto && (
+      {lightboxPhotos && lightboxPhotos.length > 0 && (
         <div className="fixed inset-0 z-60 bg-black/90 flex items-center justify-center p-4 animate-fadeIn">
-          <div className="relative max-w-sm w-full">
+          <div className="relative max-w-sm w-full space-y-3 max-h-[90vh] overflow-y-auto">
             <button
-              onClick={() => setLightboxPhoto(null)}
-              className="absolute top-2 right-2 bg-slate-900 text-white p-2 rounded-full z-10"
+              onClick={() => setLightboxPhotos(null)}
+              className="absolute top-2 right-2 bg-slate-900/90 hover:bg-slate-800 text-white p-2 rounded-full z-10 border border-slate-700"
             >
               ✕
             </button>
-            <img
-              src={lightboxPhoto}
-              alt="Proof"
-              className="w-full max-h-[80vh] object-contain rounded-2xl border border-slate-700 shadow-2xl"
-            />
+            {lightboxPhotos.map((photo, idx) => (
+              <div key={idx} className="relative">
+                <img
+                  src={photo}
+                  alt={`Proof ${idx + 1}`}
+                  className="w-full max-h-[70vh] object-contain rounded-2xl border border-slate-700 shadow-2xl bg-black"
+                />
+                {lightboxPhotos.length > 1 && (
+                  <span className="absolute bottom-2 left-2 bg-slate-900/80 text-slate-200 text-xs font-bold px-2 py-1 rounded-md border border-slate-700">
+                    {idx + 1} / {lightboxPhotos.length}
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}

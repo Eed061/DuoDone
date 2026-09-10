@@ -537,7 +537,7 @@ class StorageService {
   }
 
   // Action completion for DuoDone Ping-Pong Task
-  public completeTask(taskId: string, userId: string, photoUrl?: string | null): { task: Task; log: ActivityLog } {
+  public completeTask(taskId: string, userId: string, photoUrl?: string | null, photoUrls?: string[]): { task: Task; log: ActivityLog } {
     const tasks = this.getTasks();
     const users = this.getUsers();
     const taskIndex = tasks.findIndex((t) => t.id === taskId);
@@ -556,6 +556,9 @@ class StorageService {
     tasks[taskIndex] = updatedTask;
     this.setItem(STORAGE_KEYS.TASKS, tasks);
 
+    const primaryPhoto = photoUrl || (photoUrls && photoUrls[0]) || null;
+    const allPhotos = photoUrls || (photoUrl ? [photoUrl] : []);
+
     // Create log
     const log: ActivityLog = {
       id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -566,7 +569,8 @@ class StorageService {
       entity_title: task.title,
       entity_icon: task.icon,
       xp_earned: task.xp_points,
-      photo_url: photoUrl || null,
+      photo_url: primaryPhoto,
+      photo_urls: allPhotos.length > 0 ? allPhotos : undefined,
       created_at: new Date().toISOString(),
     };
 
@@ -598,7 +602,7 @@ class StorageService {
     this.setItem(STORAGE_KEYS.COUNTERS, counters);
   }
 
-  public incrementCounter(counterId: string, userId: string, photoUrl?: string | null): { counter: Counter; log: ActivityLog } {
+  public incrementCounter(counterId: string, userId: string, photoUrl?: string | null, photoUrls?: string[]): { counter: Counter; log: ActivityLog } {
     const counters = this.getCounters();
     const index = counters.findIndex((c) => c.id === counterId);
     if (index === -1) throw new Error('Counter not found');
@@ -612,6 +616,9 @@ class StorageService {
     counters[index] = updatedCounter;
     this.setItem(STORAGE_KEYS.COUNTERS, counters);
 
+    const primaryPhoto = photoUrl || (photoUrls && photoUrls[0]) || null;
+    const allPhotos = photoUrls || (photoUrl ? [photoUrl] : []);
+
     const log: ActivityLog = {
       id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       household_id: counter.household_id,
@@ -621,7 +628,8 @@ class StorageService {
       entity_title: counter.title,
       entity_icon: counter.icon,
       xp_earned: 0,
-      photo_url: photoUrl || null,
+      photo_url: primaryPhoto,
+      photo_urls: allPhotos.length > 0 ? allPhotos : undefined,
       created_at: new Date().toISOString(),
     };
 

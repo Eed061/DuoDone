@@ -16,7 +16,7 @@ export const CounterDetailModal: React.FC<CounterDetailModalProps> = ({
   onClose,
 }) => {
   const { activityLogs, users, language, t } = useApp();
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [selectedPhotos, setSelectedPhotos] = useState<string[] | null>(null);
 
   // Filter activity logs for this entity
   const logs = activityLogs.filter(
@@ -129,13 +129,21 @@ export const CounterDetailModal: React.FC<CounterDetailModalProps> = ({
                         </div>
                       </div>
 
-                      {log.photo_url && (
+                      {(log.photo_urls?.length || log.photo_url) && (
                         <button
-                          onClick={() => setSelectedPhoto(log.photo_url!)}
-                          className="flex items-center space-x-1 bg-slate-700/60 hover:bg-slate-700 text-indigo-300 text-xs font-medium px-2 py-1 rounded-lg border border-slate-600/40"
+                          onClick={() => {
+                            const photos = log.photo_urls && log.photo_urls.length > 0
+                              ? log.photo_urls
+                              : log.photo_url ? [log.photo_url] : [];
+                            setSelectedPhotos(photos);
+                          }}
+                          className="flex items-center space-x-1 bg-slate-700/60 hover:bg-slate-700 text-indigo-300 text-xs font-medium px-2 py-1 rounded-lg border border-slate-600/40 transition-colors"
                         >
                           <ImageIcon className="w-3 h-3 text-indigo-400" />
-                          <span>{t('calendar_photo_btn')}</span>
+                          <span>
+                            {t('calendar_photo_btn')}
+                            {log.photo_urls && log.photo_urls.length > 1 ? ` (${log.photo_urls.length})` : ''}
+                          </span>
                         </button>
                       )}
                     </div>
@@ -147,20 +155,29 @@ export const CounterDetailModal: React.FC<CounterDetailModalProps> = ({
         </div>
 
         {/* Lightbox photo viewer */}
-        {selectedPhoto && (
+        {selectedPhotos && selectedPhotos.length > 0 && (
           <div className="fixed inset-0 z-60 bg-black/90 flex items-center justify-center p-4 animate-fadeIn">
-            <div className="relative max-w-sm w-full">
+            <div className="relative max-w-sm w-full space-y-3 max-h-[90vh] overflow-y-auto">
               <button
-                onClick={() => setSelectedPhoto(null)}
-                className="absolute top-2 right-2 bg-slate-900 text-white p-2 rounded-full z-10"
+                onClick={() => setSelectedPhotos(null)}
+                className="absolute top-2 right-2 bg-slate-900/90 hover:bg-slate-800 text-white p-2 rounded-full z-10 border border-slate-700"
               >
                 <X className="w-5 h-5" />
               </button>
-              <img
-                src={selectedPhoto}
-                alt="Full Proof"
-                className="w-full max-h-[80vh] object-contain rounded-2xl border border-slate-700 shadow-2xl"
-              />
+              {selectedPhotos.map((photo, idx) => (
+                <div key={idx} className="relative">
+                  <img
+                    src={photo}
+                    alt={`Full Proof ${idx + 1}`}
+                    className="w-full max-h-[70vh] object-contain rounded-2xl border border-slate-700 shadow-2xl bg-black"
+                  />
+                  {selectedPhotos.length > 1 && (
+                    <span className="absolute bottom-2 left-2 bg-slate-900/80 text-slate-200 text-xs font-bold px-2 py-1 rounded-md border border-slate-700">
+                      {idx + 1} / {selectedPhotos.length}
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}

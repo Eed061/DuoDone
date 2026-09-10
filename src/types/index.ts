@@ -90,6 +90,7 @@ export interface ActivityLog {
   entity_icon?: string;
   xp_earned: number;
   photo_url?: string | null;
+  photo_urls?: string[];
   created_at: string; // ISO string
 }
 
