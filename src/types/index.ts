@@ -18,6 +18,14 @@ export interface User {
   created_at: string;
 }
 
+export interface HouseholdMember {
+  userId: string;
+  telegram_id?: number | string | null;
+  telegram_username?: string | null;
+  role: 'p1' | 'p2';
+  joinedAt: string;
+}
+
 export interface Household {
   id: string;
   name: string;
@@ -30,8 +38,9 @@ export interface Household {
   created_at: string;
   // Multi-Space & Access Lock
   owner_user_id?: string;
+  owner_telegram_id?: number | string | null;
   is_locked?: boolean;
-  members?: { userId: string; role: 'p1' | 'p2'; joinedAt: string }[];
+  members?: HouseholdMember[];
   // Dashboard Config
   show_balancer_widget: boolean;
   pinned_task_ids?: string[];

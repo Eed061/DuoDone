@@ -399,8 +399,15 @@ class StorageService {
       created_at: new Date().toISOString(),
       show_balancer_widget: true,
       owner_user_id: u1Id,
+      owner_telegram_id: ownerTgUser?.id || null,
       is_locked: false,
-      members: [{ userId: u1Id, role: 'p1', joinedAt: new Date().toISOString() }],
+      members: [{
+        userId: u1Id,
+        telegram_id: ownerTgUser?.id || null,
+        telegram_username: ownerTgUser?.username || null,
+        role: 'p1' as const,
+        joinedAt: new Date().toISOString(),
+      }],
     };
 
     const freshUsers: User[] = [
@@ -466,7 +473,46 @@ class StorageService {
   public deleteHouseholdSpace(householdId: string): Household[] {
     const list = this.getHouseholdsList().filter((h) => h.id !== householdId);
     this.setItem(STORAGE_KEYS.HOUSEHOLDS_LIST, list);
+    // Also delete snapshot
+    try { localStorage.removeItem(`duodone_space_${householdId}`); } catch {}
     return list;
+  }
+
+  // Per-space snapshot: saves current space data under its household ID
+  public saveSpaceSnapshot(householdId?: string): void {
+    const hhId = householdId || this.getHousehold().id;
+    if (!hhId) return;
+    const snapshot = {
+      users: this.getUsers(),
+      tasks: this.getTasks(),
+      counters: this.getCounters(),
+      activityLogs: this.getActivityLogs(),
+      rouletteItems: this.getRouletteItems(),
+      activeUserId: this.getActiveUserId(),
+      userRole: localStorage.getItem('duodone_user_role') || 'p1',
+    };
+    try {
+      localStorage.setItem(`duodone_space_${hhId}`, JSON.stringify(snapshot));
+    } catch {}
+  }
+
+  // Restores space data from snapshot
+  public loadSpaceSnapshot(householdId: string): boolean {
+    try {
+      const raw = localStorage.getItem(`duodone_space_${householdId}`);
+      if (!raw) return false;
+      const snapshot = JSON.parse(raw);
+      if (snapshot.users) this.saveUsers(snapshot.users);
+      if (snapshot.tasks) this.saveTasks(snapshot.tasks);
+      if (snapshot.counters) this.saveCounters(snapshot.counters);
+      if (snapshot.activityLogs) this.saveActivityLogs(snapshot.activityLogs);
+      if (snapshot.rouletteItems) this.saveRouletteItems(snapshot.rouletteItems);
+      if (snapshot.activeUserId) this.setActiveUserId(snapshot.activeUserId);
+      if (snapshot.userRole) localStorage.setItem('duodone_user_role', snapshot.userRole);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   // Tasks

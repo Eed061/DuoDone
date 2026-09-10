@@ -139,11 +139,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (matchU1) {
           storedUsers = cloudUsers;
           storedHousehold = cloudData.household;
+          // Auto-migrate: ensure creator's telegram_id is in members
+          if (telegramUser && storedHousehold.members) {
+            const m1 = storedHousehold.members.find(m => m.role === 'p1');
+            if (m1 && !m1.telegram_id) {
+              m1.telegram_id = telegramUser.id;
+              m1.telegram_username = telegramUser.username || null;
+            }
+          }
+          if (!storedHousehold.owner_telegram_id && telegramUser) {
+            storedHousehold.owner_telegram_id = telegramUser.id;
+          }
           storage.setActiveUserId(u1.id);
           localStorage.setItem('duodone_user_role', 'p1');
         } else if (matchU2) {
           storedUsers = cloudUsers;
           storedHousehold = cloudData.household;
+          // Auto-migrate: ensure p2's telegram_id is in members
+          if (telegramUser && storedHousehold.members) {
+            const m2 = storedHousehold.members.find(m => m.role === 'p2');
+            if (m2 && !m2.telegram_id) {
+              m2.telegram_id = telegramUser.id;
+              m2.telegram_username = telegramUser.username || null;
+            } else if (!m2) {
+              storedHousehold.members.push({
+                userId: u2!.id,
+                telegram_id: telegramUser.id,
+                telegram_username: telegramUser.username || null,
+                role: 'p2',
+                joinedAt: new Date().toISOString(),
+              });
+            }
+          }
           storage.setActiveUserId(u2!.id);
           localStorage.setItem('duodone_user_role', 'p2');
         } else if (u2 && (u2.is_placeholder || !u2TgId)) {
@@ -157,6 +184,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           };
           storedUsers = cloudUsers;
           storedHousehold = cloudData.household;
+          // Add Partner 2 to household.members
+          storedHousehold.members = [
+            ...(storedHousehold.members || []).filter(m => m.role !== 'p2'),
+            {
+              userId: cloudUsers[1].id,
+              telegram_id: telegramUser?.id || null,
+              telegram_username: telegramUser?.username || null,
+              role: 'p2',
+              joinedAt: new Date().toISOString(),
+            },
+          ];
           storage.setActiveUserId(cloudUsers[1].id);
           localStorage.setItem('duodone_user_role', 'p2');
         } else {
@@ -202,6 +240,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         storage.saveUsers(storedUsers);
         storage.setActiveUserId(storedUsers[0].id);
         localStorage.setItem('duodone_user_role', 'p1');
+        // Auto-migrate: ensure owner_telegram_id and members have telegram_id
+        if (!storedHousehold.owner_telegram_id) {
+          storedHousehold.owner_telegram_id = telegramUser.id;
+        }
+        if (storedHousehold.members) {
+          const m1 = storedHousehold.members.find(m => m.role === 'p1');
+          if (m1 && !m1.telegram_id) {
+            m1.telegram_id = telegramUser.id;
+            m1.telegram_username = telegramUser.username || null;
+          }
+        }
+        storage.saveHousehold(storedHousehold);
+        storage.saveHouseholdToList(storedHousehold);
       } else if (isU2) {
         // Current user matches Partner 2
         storedUsers[1].telegram_id = telegramUser.id;
@@ -209,6 +260,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         storage.saveUsers(storedUsers);
         storage.setActiveUserId(storedUsers[1].id);
         localStorage.setItem('duodone_user_role', 'p2');
+        // Auto-migrate: ensure p2's telegram_id is in members
+        if (storedHousehold.members) {
+          const m2 = storedHousehold.members.find(m => m.role === 'p2');
+          if (m2 && !m2.telegram_id) {
+            m2.telegram_id = telegramUser.id;
+            m2.telegram_username = telegramUser.username || null;
+          } else if (!m2) {
+            storedHousehold.members.push({
+              userId: storedUsers[1].id,
+              telegram_id: telegramUser.id,
+              telegram_username: telegramUser.username || null,
+              role: 'p2',
+              joinedAt: new Date().toISOString(),
+            });
+          }
+        }
+        storage.saveHousehold(storedHousehold);
+        storage.saveHouseholdToList(storedHousehold);
       } else if (isInvitedPartner && storedUsers[1] && (storedUsers[1].is_placeholder || !u2TgId)) {
         // User joining into open Partner 2 slot
         storedUsers[1] = {
@@ -221,6 +290,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         storage.saveUsers(storedUsers);
         storage.setActiveUserId(storedUsers[1].id);
         localStorage.setItem('duodone_user_role', 'p2');
+        // Add Partner 2 to household.members
+        storedHousehold.members = [
+          ...(storedHousehold.members || []).filter(m => m.role !== 'p2'),
+          {
+            userId: storedUsers[1].id,
+            telegram_id: telegramUser.id,
+            telegram_username: telegramUser.username || null,
+            role: 'p2',
+            joinedAt: new Date().toISOString(),
+          },
+        ];
+        storage.saveHousehold(storedHousehold);
+        storage.saveHouseholdToList(storedHousehold);
       } else if (!u1TgId && !u1TgUsername) {
         // Fresh local space with no Telegram ID set yet for Partner 1
         storedUsers[0].telegram_id = telegramUser.id;
@@ -299,7 +381,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               storage.saveRouletteItems(cloudData.rouletteItems);
             }
           }
-        }
+        },
+        undefined,
+        currentTgId,
+        currentTgUsername
       );
     }
   };
@@ -338,24 +423,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return users.find((u) => u.id !== activeUser.id) || (activeUser.id === users[0]?.id ? users[1] : users[0]) || ({ id: 'partner', first_name: 'Партнер' } as User);
   }, [users, activeUser]);
 
-  // Filter householdsList to only show spaces this user belongs to
+  // Filter householdsList to only show spaces where CURRENT TELEGRAM USER is a member
   const filteredHouseholdsList = useMemo(() => {
     if (!householdsList.length) return householdsList;
-    const myUserIds = new Set(users.map((u) => u.id));
-    const myActiveId = activeUserId;
+    const tgUser = getTelegramUser();
+    const currentTgId = tgUser?.id ? String(tgUser.id) : '';
+    const currentTgUsername = tgUser?.username ? tgUser.username.replace('@', '').toLowerCase() : '';
 
     return householdsList.filter((hh) => {
-      // Keep if this space's current active household
+      // Always show current active household
       if (hh.id === household.id) return true;
-      // Keep if current user is owner
-      if (hh.owner_user_id && myUserIds.has(hh.owner_user_id)) return true;
-      // Keep if current user is in members list
-      if (hh.members && hh.members.some((m) => myUserIds.has(m.userId))) return true;
-      // Keep if active user ID matches owner (fallback for older records without members)
-      if (hh.owner_user_id === myActiveId) return true;
+      // Check owner_telegram_id
+      if (currentTgId && hh.owner_telegram_id && String(hh.owner_telegram_id) === currentTgId) return true;
+      // Check members[].telegram_id or telegram_username
+      if (hh.members?.some((m) =>
+        (currentTgId && m.telegram_id && String(m.telegram_id) === currentTgId) ||
+        (currentTgUsername && m.telegram_username && m.telegram_username.replace('@', '').toLowerCase() === currentTgUsername)
+      )) return true;
       return false;
     });
-  }, [householdsList, users, activeUserId, household]);
+  }, [householdsList, household]);
 
   // Calculate XP per user
   const userXpMap = useMemo(() => {
@@ -493,8 +580,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const list = storage.getHouseholdsList();
     const target = list.find((h) => h.id === householdId);
     if (target) {
+      // Save snapshot of current space before switching
+      storage.saveSpaceSnapshot(household.id);
+
+      // Load snapshot of target space (local data)
+      const snapshotLoaded = storage.loadSpaceSnapshot(householdId);
+
       setHousehold(target);
       storage.saveHousehold(target);
+
+      if (snapshotLoaded) {
+        // Restore local data from snapshot
+        setUsers(storage.getUsers());
+        setActiveUserId(storage.getActiveUserId());
+        setTasks(storage.getTasks());
+        setCounters(storage.getCounters());
+        setActivityLogs(storage.getActivityLogs());
+        setRouletteItems(storage.getRouletteItems());
+      }
+
+      // Subscribe to cloud for target space
+      const tgUser = getTelegramUser();
+      const tgId = tgUser?.id ? String(tgUser.id) : '';
+      const tgUsername = tgUser?.username ? tgUser.username.replace('@', '').toLowerCase() : '';
+
       if (target.invite_code) {
         cloudSync.subscribeToHousehold(target.invite_code, storage.getActiveUserId(), (cloudData: CloudState) => {
           if (cloudData) {
@@ -504,13 +613,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               storage.saveHouseholdToList(cloudData.household);
               setHouseholdsList(storage.getHouseholdsList());
             }
-            if (cloudData.users) setUsers(cloudData.users);
-            if (cloudData.tasks) setTasks(cloudData.tasks);
-            if (cloudData.counters) setCounters(cloudData.counters);
-            if (cloudData.activityLogs) setActivityLogs(cloudData.activityLogs);
-            if (cloudData.rouletteItems) setRouletteItems(cloudData.rouletteItems);
+            if (cloudData.users) {
+              setUsers(cloudData.users);
+              storage.saveUsers(cloudData.users);
+            }
+            if (cloudData.tasks) {
+              setTasks(cloudData.tasks);
+              storage.saveTasks(cloudData.tasks);
+            }
+            if (cloudData.counters) {
+              setCounters(cloudData.counters);
+              storage.saveCounters(cloudData.counters);
+            }
+            if (cloudData.activityLogs) {
+              setActivityLogs(cloudData.activityLogs);
+              storage.saveActivityLogs(cloudData.activityLogs);
+            }
+            if (cloudData.rouletteItems) {
+              setRouletteItems(cloudData.rouletteItems);
+              storage.saveRouletteItems(cloudData.rouletteItems);
+            }
+            // Save snapshot after cloud sync
+            storage.saveSpaceSnapshot(householdId);
           }
-        });
+        }, undefined, tgId, tgUsername);
       }
     }
   };
@@ -518,7 +644,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Create New Space / Household
   const handleCreateNewHousehold = async (name?: string): Promise<Household> => {
     triggerSuccessHaptic();
-    const newHh = storage.createNewHouseholdSpace(name, activeUser.id);
+    // Save snapshot of current space before creating new one
+    storage.saveSpaceSnapshot(household.id);
+    const tgUser = getTelegramUser();
+    const newHh = storage.createNewHouseholdSpace(name, activeUser.id, tgUser || undefined);
 
     // Fresh users state: Creator is User 1 (p1), Partner 2 is unjoined (waiting)
     const freshUsers: User[] = [
@@ -583,6 +712,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     pushStateToCloud(newHh, freshUsers, freshTasks, freshCounters, freshLogs, freshRoulette);
 
     if (newHh.invite_code) {
+      const tgIdStr = tgUser?.id ? String(tgUser.id) : '';
+      const tgUsernameStr = tgUser?.username ? tgUser.username.replace('@', '').toLowerCase() : '';
       cloudSync.subscribeToHousehold(newHh.invite_code, storage.getActiveUserId(), (cloudData: CloudState) => {
         if (cloudData && cloudData.household) {
           setHousehold(cloudData.household);
@@ -590,7 +721,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           storage.saveHouseholdToList(cloudData.household);
           setHouseholdsList(storage.getHouseholdsList());
         }
-      });
+      }, undefined, tgIdStr, tgUsernameStr);
     }
 
     return newHh;
@@ -695,7 +826,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           if (newCloudData.activityLogs) setActivityLogs(newCloudData.activityLogs);
           if (newCloudData.rouletteItems) setRouletteItems(newCloudData.rouletteItems);
         }
-      });
+      }, undefined, tgUser?.id ? String(tgUser.id) : '', tgUser?.username ? tgUser.username.replace('@', '').toLowerCase() : '');
 
       return { success: true };
     }
