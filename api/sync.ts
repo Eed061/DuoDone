@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-// Use globalThis to persist state across warm serverless re-invocations on Vercel.
-// This survives function restarts within the same instance (warm starts).
-// Data is lost on cold starts, but that is acceptable for the MVP.
+const FIREBASE_DB_URL = 'https://duodone-f4f09-default-rtdb.europe-west1.firebasedatabase.app';
+
+// In-memory quick cache across warm invocations
 declare const globalThis: any;
 if (!globalThis.__duodoneStore) {
   globalThis.__duodoneStore = {};
@@ -55,6 +55,35 @@ function isAuthorized(
   return false;
 }
 
+// Fetch helper from Firebase Realtime Database
+async function fetchFromFirebase(code: string): Promise<any | null> {
+  try {
+    const res = await fetch(`${FIREBASE_DB_URL}/households/${code}.json`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.household) {
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn('Firebase fetch error in API:', err);
+  }
+  return null;
+}
+
+// Save helper to Firebase Realtime Database
+async function saveToFirebase(code: string, data: any): Promise<void> {
+  try {
+    await fetch(`${FIREBASE_DB_URL}/households/${code}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  } catch (err) {
+    console.warn('Firebase save error in API:', err);
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS — allow web, mobile (Capacitor), Telegram WebApp
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -89,7 +118,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Invalid payload: missing household' });
       }
 
-      const existingData = globalMemoryStore[code];
+      // Check existing state from memory or Firebase
+      let existingData = globalMemoryStore[code];
+      if (!existingData) {
+        existingData = await fetchFromFirebase(code);
+      }
 
       // Access control: only authorized members can overwrite a locked space
       if (existingData && !isAuthorized(existingData, requestingUserId, requestingTgId, requestingTgUsername)) {
@@ -115,6 +148,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       globalMemoryStore[code] = dataToSave;
 
+      // Persist directly to Firebase Realtime Database
+      await saveToFirebase(code, dataToSave);
+
       return res.status(200).json({
         success: true,
         code,
@@ -128,11 +164,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // ── GET: Fetch state ──────────────────────────────────────────────────────
   if (req.method === 'GET') {
+    let memoryData = globalMemoryStore[code];
+
+    // If cold start or not in memory, pull from Firebase Realtime Database
+    if (!memoryData) {
+      memoryData = await fetchFromFirebase(code);
+      if (memoryData) {
+        globalMemoryStore[code] = memoryData;
+      }
+    }
+
     // Special join-check action
     const action = req.query.action as string;
     if (action === 'join_check') {
-      const memData = globalMemoryStore[code];
-      if (memData && !isAuthorized(memData, requestingUserId, requestingTgId, requestingTgUsername)) {
+      if (memoryData && !isAuthorized(memoryData, requestingUserId, requestingTgId, requestingTgUsername)) {
         return res.status(403).json({
           error: 'space_full',
           is_locked: true,
@@ -141,8 +186,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       return res.status(200).json({ allowed: true });
     }
-
-    const memoryData = globalMemoryStore[code];
 
     if (memoryData) {
       // Access control for locked spaces

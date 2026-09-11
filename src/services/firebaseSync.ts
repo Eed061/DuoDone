@@ -11,6 +11,8 @@ export interface CloudState {
   updatedByUserId?: string;
 }
 
+const FIREBASE_DB_URL = 'https://duodone-f4f09-default-rtdb.europe-west1.firebasedatabase.app';
+
 export class FirebaseSyncService {
   private pushTimer: any = null;
   // Per-instance tracking so multiple simultaneous subscriptions don't conflict
@@ -23,7 +25,7 @@ export class FirebaseSyncService {
     return (code || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
   }
 
-  // Push current household state to cloud
+  // Push current household state to cloud (Dual-write: Vercel serverless + direct Firebase RTDB)
   public pushState(state: Omit<CloudState, 'updatedAt'>, requestingUserId?: string): void {
     if (!state.household?.invite_code) return;
 
@@ -47,10 +49,17 @@ export class FirebaseSyncService {
           body: JSON.stringify({ ...dataToSave, requestingUserId }),
         }).catch(() => {});
 
+        // 2. Direct fast push to Firebase Realtime Database
+        fetch(`${FIREBASE_DB_URL}/households/${code}.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dataToSave),
+        }).catch(() => {});
+
       } catch (err) {
         console.warn('Cloud push warning:', err);
       }
-    }, 300);
+    }, 250);
   }
 
   // Check if household space is full (2 members locked) for a 3rd user
@@ -83,6 +92,7 @@ export class FirebaseSyncService {
     if (!inviteCode) return null;
     const code = this.sanitizeCode(inviteCode);
 
+    // 1. Try Vercel Serverless Endpoint
     try {
       const url = `/api/sync?code=${code}&userId=${requestingUserId || ''}&tgId=${requestingTgId || ''}&tgUsername=${requestingTgUsername || ''}`;
       const res = await fetch(url);
@@ -94,7 +104,20 @@ export class FirebaseSyncService {
         }
       }
     } catch (err) {
-      console.warn('fetchHouseholdByCode error:', err);
+      console.warn('fetchHouseholdByCode api error:', err);
+    }
+
+    // 2. Direct fallback to Firebase Realtime Database
+    try {
+      const res = await fetch(`${FIREBASE_DB_URL}/households/${code}.json`);
+      if (res.ok) {
+        const data = (await res.json()) as CloudState;
+        if (data && data.household) {
+          return data;
+        }
+      }
+    } catch (err) {
+      console.warn('fetchHouseholdByCode direct firebase error:', err);
     }
 
     return null;
