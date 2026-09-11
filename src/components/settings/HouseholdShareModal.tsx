@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { translateEntityTitle } from '../../i18n/translations';
-import { Copy, Check, Users, Edit3, RotateCcw, RefreshCw, AlertTriangle, ArrowRight, Send, Plus, ShieldCheck, Lock, UserX, Settings } from 'lucide-react';
+import { Copy, Check, Users, Edit3, RotateCcw, RefreshCw, AlertTriangle, ArrowRight, Send, Plus, UserX, Settings } from 'lucide-react';
 import { triggerSuccessHaptic, openTelegramLink } from '../../services/telegram';
 import { EditUserModal } from '../layout/EditUserModal';
 import { CreateSpaceModal } from '../layout/CreateSpaceModal';
@@ -112,25 +112,134 @@ export const HouseholdShareModal: React.FC = () => {
           </span>
         </div>
 
-        {/* Rename Partners Section */}
-        <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 flex items-center justify-between">
-          <div>
-            <h4 className="text-xs font-bold text-slate-200">{t('hsm_partners_in_app')}</h4>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              <span className="font-semibold text-indigo-300">{user1Name}</span> {t('and')}{' '}
-              <span className="font-semibold text-pink-300">{user2Name}</span>
-            </p>
+        {/* ─── 1. Partners in App ──────────────────────────────────────── */}
+        <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-xs font-bold text-slate-200">{t('hsm_partners_in_app')}</h4>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                <span className="font-semibold text-indigo-300">{user1Name}</span> {t('and')}{' '}
+                <span className="font-semibold text-pink-300">{user2Name}</span>
+              </p>
+            </div>
+            <button
+              onClick={() => setShowEditUserModal(true)}
+              className="bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-indigo-500/30 flex items-center space-x-1 transition-all"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>{t('hsm_edit_data')}</span>
+            </button>
           </div>
-          <button
-            onClick={() => setShowEditUserModal(true)}
-            className="bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-indigo-500/30 flex items-center space-x-1 transition-all"
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-            <span>{t('hsm_edit_data')}</span>
-          </button>
+
+          {/* Disconnect Partner — lives here under Partners */}
+          {isLocked && (
+            <>
+              {!showDisconnectConfirm ? (
+                <button
+                  onClick={() => setShowDisconnectConfirm(true)}
+                  className="w-full py-2 px-3 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 text-xs font-bold flex items-center justify-center space-x-1.5 border border-amber-500/30 transition-all"
+                >
+                  <UserX className="w-4 h-4" />
+                  <span>{t('sm_disconnect_partner')}</span>
+                </button>
+              ) : (
+                <div className="bg-amber-950/80 border border-amber-500/50 rounded-xl p-3 text-center space-y-2 animate-fadeIn">
+                  <p className="text-xs text-amber-200 font-semibold">{t('sm_disconnect_confirm')}</p>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setShowDisconnectConfirm(false)}
+                      className="flex-1 py-1.5 bg-slate-800 text-slate-300 text-xs font-bold rounded-lg"
+                    >
+                      {t('cancel')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        disconnectPartner();
+                        setShowDisconnectConfirm(false);
+                      }}
+                      className="flex-1 py-1.5 bg-amber-600 text-white text-xs font-bold rounded-lg"
+                    >
+                      {t('sm_disconnect_partner')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
-        {/* Household Name Form */}
+        {/* ─── 2. Invite Partner Section ───────────────────────────────── */}
+        <div className="bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-slate-900 p-3.5 rounded-xl border border-indigo-500/30 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-extrabold text-indigo-300 uppercase tracking-wider">
+              {t('hsm_partner_invite')}
+            </span>
+            <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-md font-mono font-bold">
+              {t('hsm_invite_code', { code: inviteCode })}
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-300">
+            {t('hsm_invite_desc')}
+          </p>
+
+          <div className="grid grid-cols-1 gap-2 pt-1">
+            <button
+              onClick={handleSendTelegramInvite}
+              className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-lg shadow-indigo-500/25 active:scale-95 transition-all"
+            >
+              <Send className="w-4 h-4" />
+              <span>{t('share_card_btn')}</span>
+            </button>
+
+            <button
+              onClick={handleCopyInviteCardText}
+              className="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center space-x-1 border border-slate-700 transition-colors"
+            >
+              {copiedCard ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-400">{t('invite_copied')}</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>{t('copy_invite_btn')}</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* ─── 3. Join Household by Code Form ─────────────────────────── */}
+        <form onSubmit={handleJoinByCode} className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-700/50 space-y-2">
+          <label className="text-[11px] font-semibold text-slate-300 flex items-center justify-between">
+            <span>{t('hsm_join_code_label')}</span>
+          </label>
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              value={joinCodeInput}
+              onChange={(e) => setJoinCodeInput(e.target.value)}
+              placeholder={t('hsm_join_code_ph')}
+              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white uppercase placeholder:normal-case placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={isJoining || !joinCodeInput.trim()}
+              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all"
+            >
+              {isJoining ? '...' : t('hsm_join_btn')}
+            </button>
+          </div>
+          {joinStatus && (
+            <p className={`text-xs font-semibold mt-1 ${joinStatus.success ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {joinStatus.msg}
+            </p>
+          )}
+        </form>
+
+        {/* ─── 4. Space Name + Space Management ───────────────────────── */}
         <form onSubmit={handleSaveName} className="space-y-2">
           <label className="text-[11px] font-semibold text-slate-300">{t('hsm_space_name_label')}</label>
           <div className="flex space-x-2">
@@ -167,43 +276,7 @@ export const HouseholdShareModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Disconnect Partner Control when 2/2 */}
-        {isLocked && (
-          <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 space-y-2">
-            {!showDisconnectConfirm ? (
-              <button
-                onClick={() => setShowDisconnectConfirm(true)}
-                className="w-full py-2 px-3 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 text-xs font-bold flex items-center justify-center space-x-1.5 border border-amber-500/30 transition-all"
-              >
-                <UserX className="w-4 h-4" />
-                <span>{t('sm_disconnect_partner')}</span>
-              </button>
-            ) : (
-              <div className="bg-amber-950/80 border border-amber-500/50 rounded-xl p-3 text-center space-y-2 animate-fadeIn">
-                <p className="text-xs text-amber-200 font-semibold">{t('sm_disconnect_confirm')}</p>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setShowDisconnectConfirm(false)}
-                    className="flex-1 py-1.5 bg-slate-800 text-slate-300 text-xs font-bold rounded-lg"
-                  >
-                    {t('cancel')}
-                  </button>
-                  <button
-                    onClick={() => {
-                      disconnectPartner();
-                      setShowDisconnectConfirm(false);
-                    }}
-                    className="flex-1 py-1.5 bg-amber-600 text-white text-xs font-bold rounded-lg"
-                  >
-                    {t('sm_disconnect_partner')}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Cycle & Reset Control Buttons */}
+        {/* ─── 5. Cycle & Data Controls (bottom) ──────────────────────── */}
         <div className="pt-2 space-y-2 border-t border-slate-700/60">
           <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
             {t('hsm_cycle_control_header')}
@@ -277,77 +350,6 @@ export const HouseholdShareModal: React.FC = () => {
             )}
           </div>
         </div>
-
-        {/* Invite Partner Section */}
-        <div className="bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-slate-900 p-3.5 rounded-xl border border-indigo-500/30 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-indigo-300 uppercase tracking-wider">
-              {t('hsm_partner_invite')}
-            </span>
-            <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-md font-mono font-bold">
-              {t('hsm_invite_code', { code: inviteCode })}
-            </span>
-          </div>
-
-          <p className="text-xs text-slate-300">
-            {t('hsm_invite_desc')}
-          </p>
-
-          <div className="grid grid-cols-1 gap-2 pt-1">
-            <button
-              onClick={handleSendTelegramInvite}
-              className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-lg shadow-indigo-500/25 active:scale-95 transition-all"
-            >
-              <Send className="w-4 h-4" />
-              <span>{t('share_card_btn')}</span>
-            </button>
-
-            <button
-              onClick={handleCopyInviteCardText}
-              className="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center space-x-1 border border-slate-700 transition-colors"
-            >
-              {copiedCard ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400">{t('invite_copied')}</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>{t('copy_invite_btn')}</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Join Household by Code Form */}
-        <form onSubmit={handleJoinByCode} className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-700/50 space-y-2">
-          <label className="text-[11px] font-semibold text-slate-300 flex items-center justify-between">
-            <span>{t('hsm_join_code_label')}</span>
-          </label>
-          <div className="flex space-x-2">
-            <input
-              type="text"
-              value={joinCodeInput}
-              onChange={(e) => setJoinCodeInput(e.target.value)}
-              placeholder={t('hsm_join_code_ph')}
-              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white uppercase placeholder:normal-case placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
-            />
-            <button
-              type="submit"
-              disabled={isJoining || !joinCodeInput.trim()}
-              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all"
-            >
-              {isJoining ? '...' : t('hsm_join_btn')}
-            </button>
-          </div>
-          {joinStatus && (
-            <p className={`text-xs font-semibold mt-1 ${joinStatus.success ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {joinStatus.msg}
-            </p>
-          )}
-        </form>
       </div>
 
       {showEditUserModal && <EditUserModal onClose={() => setShowEditUserModal(false)} />}
@@ -356,3 +358,4 @@ export const HouseholdShareModal: React.FC = () => {
     </>
   );
 };
+

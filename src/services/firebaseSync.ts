@@ -11,11 +11,13 @@ export interface CloudState {
   updatedByUserId?: string;
 }
 
-let activePollInterval: any = null;
-let lastKnownUpdatedAt = '';
-
 export class FirebaseSyncService {
   private pushTimer: any = null;
+  // Per-instance tracking so multiple simultaneous subscriptions don't conflict
+  private lastKnownUpdatedAt = '';
+  private activePollInterval: any = null;
+  private currentPollCode = '';
+  private consecutiveErrors = 0;
 
   public sanitizeCode(code: string): string {
     return (code || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
@@ -35,25 +37,20 @@ export class FirebaseSyncService {
           updatedAt: new Date().toISOString(),
         };
 
-        lastKnownUpdatedAt = dataToSave.updatedAt;
+        // Update immediately so our own push doesn't trigger a pull-back in polling
+        this.lastKnownUpdatedAt = dataToSave.updatedAt;
 
-        // 1. Send to Vercel serverless endpoint with requestingUserId
+        // 1. Send to Vercel serverless endpoint
         fetch(`/api/sync?code=${code}&userId=${requestingUserId || ''}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...dataToSave, requestingUserId }),
         }).catch(() => {});
 
-        // 2. Backup send to secondary global REST API
-        fetch('https://api.restful-api.dev/objects', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'DUODONE_HH_' + code, data: dataToSave }),
-        }).catch(() => {});
       } catch (err) {
         console.warn('Cloud push warning:', err);
       }
-    }, 250);
+    }, 300);
   }
 
   // Check if household space is full (2 members locked) for a 3rd user
@@ -86,61 +83,26 @@ export class FirebaseSyncService {
     if (!inviteCode) return null;
     const code = this.sanitizeCode(inviteCode);
 
-    // 1. Try Vercel Serverless Endpoint
     try {
       const url = `/api/sync?code=${code}&userId=${requestingUserId || ''}&tgId=${requestingTgId || ''}&tgUsername=${requestingTgUsername || ''}`;
       const res = await fetch(url);
-      if (res.status === 403) {
-        // Forbidden to 3rd party
-        return null;
-      }
+      if (res.status === 403) return null;
       if (res.ok) {
         const data = (await res.json()) as CloudState;
         if (data && data.household) {
-          if (data.updatedAt) lastKnownUpdatedAt = data.updatedAt;
-          return data;
-        }
-      }
-    } catch {}
-
-    // 2. Try Secondary REST Backup Store
-    try {
-      const res = await fetch('https://api.restful-api.dev/objects');
-      if (res.ok) {
-        const objects: any[] = await res.json();
-        const found = objects
-          .reverse()
-          .find((o: any) => o.name === 'DUODONE_HH_' + code && o.data && o.data.household);
-
-        if (found && found.data) {
-          const data = found.data as CloudState;
-          const realMembers = (data.users || []).filter((u: User) => !u.is_placeholder);
-          if (realMembers.length >= 2) {
-            const memberTgIds = realMembers.map((u: User) => String(u.telegram_id || ''));
-            const memberTgUsernames = realMembers.map((u: User) => String(u.telegram_username || '').replace('@', '').toLowerCase());
-            let isAuth = false;
-            if (requestingTgId && memberTgIds.includes(String(requestingTgId))) isAuth = true;
-            else if (requestingTgUsername && memberTgUsernames.includes(String(requestingTgUsername).toLowerCase())) isAuth = true;
-            else if (!requestingTgId && !requestingTgUsername && requestingUserId) {
-              const m = realMembers.find((u: User) => String(u.id) === String(requestingUserId));
-              if (m && !m.telegram_id) isAuth = true;
-            }
-            if (!isAuth) {
-              return null;
-            }
-          }
-          if (data.updatedAt) lastKnownUpdatedAt = data.updatedAt;
           return data;
         }
       }
     } catch (err) {
-      console.warn('Fetch backup error:', err);
+      console.warn('fetchHouseholdByCode error:', err);
     }
 
     return null;
   }
 
-  // Subscribe to real-time changes for a household (Polling Engine)
+  // Subscribe to real-time changes for a household (Polling Engine).
+  // Performs an initial seed fetch before starting the interval so that the
+  // first poll tick does NOT spuriously fire onUpdate with stale cloud data.
   public subscribeToHousehold(
     inviteCode: string,
     requestingUserId: string,
@@ -152,34 +114,78 @@ export class FirebaseSyncService {
     if (!inviteCode) return;
     const code = this.sanitizeCode(inviteCode);
 
+    // Stop any previous subscription
     this.unsubscribe();
+    this.currentPollCode = code;
+    this.consecutiveErrors = 0;
 
-    activePollInterval = setInterval(async () => {
+    // Seed lastKnownUpdatedAt so the first poll tick won't immediately fire onUpdate
+    this.fetchHouseholdByCode(code, requestingUserId, requestingTgId, requestingTgUsername)
+      .then((seedData) => {
+        if (seedData?.updatedAt) {
+          if (!this.lastKnownUpdatedAt || seedData.updatedAt > this.lastKnownUpdatedAt) {
+            this.lastKnownUpdatedAt = seedData.updatedAt;
+          }
+        }
+      })
+      .catch(() => {});
+
+    this.activePollInterval = setInterval(async () => {
+      // Guard: stop if subscription changed to another code
+      if (this.currentPollCode !== code) {
+        clearInterval(this.activePollInterval);
+        this.activePollInterval = null;
+        return;
+      }
+
       try {
-        const freshData = await this.fetchHouseholdByCode(code, requestingUserId, requestingTgId, requestingTgUsername);
+        const freshData = await this.fetchHouseholdByCode(
+          code,
+          requestingUserId,
+          requestingTgId,
+          requestingTgUsername
+        );
+
+        this.consecutiveErrors = 0;
+
         if (freshData && freshData.household) {
-          if (freshData.updatedAt && freshData.updatedAt !== lastKnownUpdatedAt) {
-            lastKnownUpdatedAt = freshData.updatedAt;
+          if (
+            freshData.updatedAt &&
+            freshData.updatedAt !== this.lastKnownUpdatedAt &&
+            // Only accept data strictly newer than our last known timestamp
+            freshData.updatedAt > this.lastKnownUpdatedAt
+          ) {
+            this.lastKnownUpdatedAt = freshData.updatedAt;
             onUpdate(freshData);
           }
-        } else {
-          // Verify if space was locked and access denied
+        } else if (freshData === null) {
+          // null = 403 access denied
           const access = await this.checkSpaceAccess(code, requestingUserId);
           if (!access.allowed) {
             this.unsubscribe();
             if (onDenied) onDenied();
           }
         }
-      } catch {}
-    }, 2500);
+      } catch {
+        this.consecutiveErrors++;
+        if (this.consecutiveErrors >= 10) {
+          console.warn('DuoDone: Polling stopped after 10 consecutive errors for code:', code);
+          this.unsubscribe();
+        }
+      }
+    }, 3000);
   }
 
-  // Stop active listener
+  // Stop active listener and reset state
   public unsubscribe(): void {
-    if (activePollInterval) {
-      clearInterval(activePollInterval);
-      activePollInterval = null;
+    if (this.activePollInterval) {
+      clearInterval(this.activePollInterval);
+      this.activePollInterval = null;
     }
+    this.currentPollCode = '';
+    // Reset lastKnownUpdatedAt so next subscription starts fresh
+    this.lastKnownUpdatedAt = '';
+    this.consecutiveErrors = 0;
   }
 }
 

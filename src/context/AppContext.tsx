@@ -486,10 +486,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setActivityLogs(loadedLogs);
     setRouletteItems(loadedRoulette);
 
-    // Initial push to cloud to seed if new
-    pushStateToCloud(storedHousehold, storedUsers, loadedTasks, loadedCounters, loadedLogs, loadedRoulette);
-
-    // Subscribe to cloud real-time updates for this household code
+    // Subscribe to cloud real-time updates for this household code.
+    // The subscription itself will do an initial seed-fetch internally to avoid
+    // false-triggering on the first poll tick.
     if (storedHousehold.invite_code) {
       cloudSync.subscribeToHousehold(
         storedHousehold.invite_code,
@@ -522,12 +521,55 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               setRouletteItems(cloudData.rouletteItems);
               storage.saveRouletteItems(cloudData.rouletteItems);
             }
+            storage.saveSpaceSnapshot(storedHousehold.id);
           }
         },
         undefined,
         currentTgId,
         currentTgUsername
       );
+
+      // Also do an initial cloud fetch to apply any changes made by partner since last session
+      cloudSync.fetchHouseholdByCode(storedHousehold.invite_code, storage.getActiveUserId(), currentTgId, currentTgUsername)
+        .then((freshCloud) => {
+          if (freshCloud && freshCloud.household && freshCloud.updatedAt) {
+            // Apply fresh cloud data on startup — ensures we're in sync with partner
+            if (freshCloud.household) {
+              setHousehold(freshCloud.household);
+              storage.saveHousehold(freshCloud.household);
+              storage.saveHouseholdToList(freshCloud.household);
+              setHouseholdsList(storage.getHouseholdsList());
+            }
+            if (freshCloud.users) {
+              setUsers(freshCloud.users);
+              storage.saveUsers(freshCloud.users);
+            }
+            if (freshCloud.tasks) {
+              setTasks(freshCloud.tasks);
+              storage.saveTasks(freshCloud.tasks);
+            }
+            if (freshCloud.counters) {
+              setCounters(freshCloud.counters);
+              storage.saveCounters(freshCloud.counters);
+            }
+            if (freshCloud.activityLogs) {
+              setActivityLogs(freshCloud.activityLogs);
+              storage.saveActivityLogs(freshCloud.activityLogs);
+            }
+            if (freshCloud.rouletteItems) {
+              setRouletteItems(freshCloud.rouletteItems);
+              storage.saveRouletteItems(freshCloud.rouletteItems);
+            }
+            storage.saveSpaceSnapshot(storedHousehold.id);
+          }
+        })
+        .catch(() => {});
+
+      // Push local state to cloud to seed it (for creator's first launch)
+      pushStateToCloud(storedHousehold, storedUsers, loadedTasks, loadedCounters, loadedLogs, loadedRoulette);
+    } else {
+      // No invite code — just push local state
+      pushStateToCloud(storedHousehold, storedUsers, loadedTasks, loadedCounters, loadedLogs, loadedRoulette);
     }
   };
 
@@ -859,14 +901,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const tgIdStr = tgUser?.id ? String(tgUser.id) : '';
       const tgUsernameStr = tgUser?.username ? tgUser.username.replace('@', '').toLowerCase() : '';
       cloudSync.subscribeToHousehold(newHh.invite_code, storage.getActiveUserId(), (cloudData: CloudState) => {
-        if (cloudData && cloudData.household) {
-          setHousehold(cloudData.household);
-          storage.saveHousehold(cloudData.household);
-          storage.saveHouseholdToList(cloudData.household);
-          setHouseholdsList(storage.getHouseholdsList());
+        if (cloudData) {
+          if (cloudData.household) {
+            setHousehold(cloudData.household);
+            storage.saveHousehold(cloudData.household);
+            storage.saveHouseholdToList(cloudData.household);
+            setHouseholdsList(storage.getHouseholdsList());
+          }
+          if (cloudData.users) {
+            setUsers(cloudData.users);
+            storage.saveUsers(cloudData.users);
+          }
+          if (cloudData.tasks) {
+            setTasks(cloudData.tasks);
+            storage.saveTasks(cloudData.tasks);
+          }
+          if (cloudData.counters) {
+            setCounters(cloudData.counters);
+            storage.saveCounters(cloudData.counters);
+          }
+          if (cloudData.activityLogs) {
+            setActivityLogs(cloudData.activityLogs);
+            storage.saveActivityLogs(cloudData.activityLogs);
+          }
+          if (cloudData.rouletteItems) {
+            setRouletteItems(cloudData.rouletteItems);
+            storage.saveRouletteItems(cloudData.rouletteItems);
+          }
+          storage.saveSpaceSnapshot(newHh.id);
         }
       }, undefined, tgIdStr, tgUsernameStr);
     }
+
 
     return newHh;
   };
