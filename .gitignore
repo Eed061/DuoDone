@@ -36,3 +36,4 @@ keystore_base64.txt
 *.sw?
 
 .vercel
+backup_*.zip
