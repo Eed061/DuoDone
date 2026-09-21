@@ -1,4 +1,4 @@
-﻿import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import {
   getDatabase,
   ref,
@@ -118,10 +118,10 @@ export class FirebaseSyncService {
     return null;
   }
 
-  // в”Ђв”Ђ Real-time subscription via Firebase onValue (WebSocket) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
-  // This is the key fix: onValue() opens a persistent WebSocket to Firebase.
+  // ── Real-time subscription via Firebase onValue (WebSocket) ────────────────
+  // onValue() opens a persistent WebSocket to Firebase.
   // When partner saves data, Firebase pushes it to this client in ~100ms.
-  // No polling. No Vercel. No cold starts.
+  // Firebase SDK automatically reconnects after iOS background suspension.
   public subscribeToHousehold(
     inviteCode: string,
     requestingUserId: string,
@@ -139,51 +139,77 @@ export class FirebaseSyncService {
     const dbRef = spaceRef(code);
     this.currentListener = dbRef;
 
-    let isFirstCall = true;
+    // lastSeenAt tracks the updatedAt of the last data we APPLIED.
+    // It's separate from lastWrittenAt (our own writes).
+    let lastSeenAt = '';
 
     onValue(
       dbRef,
       (snapshot) => {
         if (!snapshot.exists()) {
-          // No data yet in Firebase вЂ” this is normal for a brand new space.
-          isFirstCall = false;
+          // No data yet in Firebase — normal for a brand new space.
           return;
         }
 
         const data = snapshot.val() as CloudState;
-        if (!data || !data.household) {
-          isFirstCall = false;
+        if (!data || !data.household) return;
+
+        const incomingAt = data.updatedAt || '';
+
+        // Skip if this is a pure echo of our own latest write
+        // AND we haven't seen anything newer from the partner yet
+        if (incomingAt && incomingAt === this.lastWrittenAt && incomingAt === lastSeenAt) {
           return;
         }
 
-        // First call: always apply (syncs state on startup with partner's data)
-        if (isFirstCall) {
-          isFirstCall = false;
-          // If firebase has data and it's different from what we wrote, apply it
-          if (data.updatedAt && data.updatedAt !== this.lastWrittenAt) {
-            onUpdate(data);
+        // Apply if:
+        // 1. We haven't seen this version yet (covers first load + iOS reconnect)
+        // 2. The data is newer than what we last saw
+        if (!lastSeenAt || incomingAt > lastSeenAt) {
+          // Don't apply our own echo (we already have this data locally)
+          if (incomingAt && incomingAt === this.lastWrittenAt) {
+            // It's our own data echoed back — update lastSeenAt but don't re-apply
+            lastSeenAt = incomingAt;
+            return;
           }
-          return;
-        }
-
-        // Subsequent calls: only apply if strictly newer than our last write
-        // This prevents our own push from echoing back and overwriting local state
-        if (data.updatedAt && data.updatedAt > this.lastWrittenAt) {
+          lastSeenAt = incomingAt;
           onUpdate(data);
         }
       },
       (error) => {
         console.warn('DuoDone: Firebase onValue error:', error);
-        // If access denied, notify caller
         if (error.message?.includes('Permission denied')) {
           this.unsubscribe();
           if (onDenied) onDenied();
         }
       }
     );
+
+    // iOS fix: when user returns to Telegram from background,
+    // Firebase SDK reconnects automatically, but we add a visibilitychange
+    // listener to force a one-time re-fetch in case reconnect is slow.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        get(spaceRef(code)).then((snapshot) => {
+          if (!snapshot.exists()) return;
+          const data = snapshot.val() as CloudState;
+          if (!data?.household) return;
+          const incomingAt = data.updatedAt || '';
+          if (incomingAt && incomingAt > lastSeenAt && incomingAt !== this.lastWrittenAt) {
+            lastSeenAt = incomingAt;
+            onUpdate(data);
+          }
+        }).catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    // Store cleanup function to remove listener on unsubscribe
+    (this as any)._visibilityCleanup = () => {
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }
 
-  // в”Ђв”Ђ Check space access via API (join_check) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  // ── Check space access via API (join_check) ──────────────────────────────
   public async checkSpaceAccess(
     inviteCode: string,
     requestingUserId?: string,
@@ -227,15 +253,20 @@ export class FirebaseSyncService {
     return { allowed: true };
   }
 
-  // в”Ђв”Ђ Stop listening в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  // ── Stop listening ─────────────────────────────────────────────────────────
   public unsubscribe(): void {
     if (this.currentListener) {
       off(this.currentListener);
       this.currentListener = null;
     }
+    // Clean up iOS visibilitychange listener if one was registered
+    if ((this as any)._visibilityCleanup) {
+      (this as any)._visibilityCleanup();
+      (this as any)._visibilityCleanup = null;
+    }
     this.lastWrittenAt = '';
   }
+
 }
 
 export const cloudSync = new FirebaseSyncService();
-
