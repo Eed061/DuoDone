@@ -1,3 +1,15 @@
+﻿import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import {
+  getDatabase,
+  ref,
+  set,
+  get,
+  onValue,
+  off,
+  DatabaseReference,
+  Database,
+  serverTimestamp,
+} from 'firebase/database';
 import { Household, Task, Counter, ActivityLog, RouletteItem, User } from '../types';
 
 export interface CloudState {
@@ -11,205 +23,219 @@ export interface CloudState {
   updatedByUserId?: string;
 }
 
-const FIREBASE_DB_URL = 'https://duodone-f4f09-default-rtdb.europe-west1.firebasedatabase.app';
+// в”Ђв”Ђв”Ђ Firebase init (safe: only once) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+const FIREBASE_CONFIG = {
+  databaseURL: 'https://duodone-f4f09-default-rtdb.europe-west1.firebasedatabase.app',
+};
 
+function getFirebaseApp(): FirebaseApp {
+  return getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
+}
+
+function getDb(): Database {
+  return getDatabase(getFirebaseApp());
+}
+
+function spaceRef(code: string): DatabaseReference {
+  return ref(getDb(), `spaces/${code}`);
+}
+
+// в”Ђв”Ђв”Ђ Sanitize invite code в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+export function sanitizeCode(code: string): string {
+  return (code || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
+}
+
+// в”Ђв”Ђв”Ђ FirebaseSyncService в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 export class FirebaseSyncService {
   private pushTimer: any = null;
-  // Per-instance tracking so multiple simultaneous subscriptions don't conflict
-  private lastKnownUpdatedAt = '';
-  private activePollInterval: any = null;
-  private currentPollCode = '';
-  private consecutiveErrors = 0;
+  private currentListener: DatabaseReference | null = null;
+  private lastWrittenAt = '';
 
-  public sanitizeCode(code: string): string {
-    return (code || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
-  }
-
-  // Push current household state to cloud (Dual-write: Vercel serverless + direct Firebase RTDB)
-  public pushState(state: Omit<CloudState, 'updatedAt'>, requestingUserId?: string): void {
+  // в”Ђв”Ђ Push full state to Firebase RTDB в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  // Debounced 250ms so rapid UI clicks collapse into one write.
+  public pushState(
+    state: Omit<CloudState, 'updatedAt'>,
+    _requestingUserId?: string
+  ): void {
     if (!state.household?.invite_code) return;
 
     if (this.pushTimer) clearTimeout(this.pushTimer);
 
     this.pushTimer = setTimeout(async () => {
+      const code = sanitizeCode(state.household.invite_code);
+      const dataToSave: CloudState = {
+        ...state,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Mark own write time so the onValue listener ignores this echo
+      this.lastWrittenAt = dataToSave.updatedAt;
+
       try {
-        const code = this.sanitizeCode(state.household.invite_code);
-        const dataToSave: CloudState = {
-          ...state,
-          updatedAt: new Date().toISOString(),
-        };
-
-        // Update immediately so our own push doesn't trigger a pull-back in polling
-        this.lastKnownUpdatedAt = dataToSave.updatedAt;
-
-        // 1. Send to Vercel serverless endpoint
-        fetch(`/api/sync?code=${code}&userId=${requestingUserId || ''}`, {
+        // PRIMARY: direct Firebase SDK write (always works вЂ” no Vercel, no cold start)
+        await set(spaceRef(code), dataToSave);
+      } catch (err) {
+        console.warn('DuoDone: Firebase write failed, retrying via API...', err);
+        // FALLBACK: Vercel API (keeps Vercel store in sync for access control)
+        fetch(`/api/sync?code=${code}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...dataToSave, requestingUserId }),
-        }).catch(() => {});
-
-        // 2. Direct fast push to Firebase Realtime Database
-        fetch(`${FIREBASE_DB_URL}/households/${code}.json`, {
-          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(dataToSave),
         }).catch(() => {});
-
-      } catch (err) {
-        console.warn('Cloud push warning:', err);
       }
     }, 250);
   }
 
-  // Check if household space is full (2 members locked) for a 3rd user
+  // в”Ђв”Ђ Fetch once from Firebase в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  public async fetchHouseholdByCode(
+    inviteCode: string,
+    _requestingUserId?: string,
+    _requestingTgId?: string | number,
+    _requestingTgUsername?: string
+  ): Promise<CloudState | null> {
+    if (!inviteCode) return null;
+    const code = sanitizeCode(inviteCode);
+
+    try {
+      const snapshot = await get(spaceRef(code));
+      if (snapshot.exists()) {
+        const data = snapshot.val() as CloudState;
+        if (data && data.household) return data;
+      }
+    } catch (err) {
+      console.warn('DuoDone: fetchHouseholdByCode Firebase error:', err);
+    }
+
+    // Fallback to Vercel API if Firebase unavailable
+    try {
+      const res = await fetch(`/api/sync?code=${code}`);
+      if (res.ok) {
+        const data = (await res.json()) as CloudState;
+        if (data && data.household) return data;
+      }
+    } catch {}
+
+    return null;
+  }
+
+  // в”Ђв”Ђ Real-time subscription via Firebase onValue (WebSocket) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  // This is the key fix: onValue() opens a persistent WebSocket to Firebase.
+  // When partner saves data, Firebase pushes it to this client in ~100ms.
+  // No polling. No Vercel. No cold starts.
+  public subscribeToHousehold(
+    inviteCode: string,
+    requestingUserId: string,
+    onUpdate: (data: CloudState) => void,
+    onDenied?: () => void,
+    _requestingTgId?: string | number,
+    _requestingTgUsername?: string
+  ): void {
+    if (!inviteCode) return;
+    const code = sanitizeCode(inviteCode);
+
+    // Stop any existing subscription first
+    this.unsubscribe();
+
+    const dbRef = spaceRef(code);
+    this.currentListener = dbRef;
+
+    let isFirstCall = true;
+
+    onValue(
+      dbRef,
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          // No data yet in Firebase вЂ” this is normal for a brand new space.
+          isFirstCall = false;
+          return;
+        }
+
+        const data = snapshot.val() as CloudState;
+        if (!data || !data.household) {
+          isFirstCall = false;
+          return;
+        }
+
+        // First call: always apply (syncs state on startup with partner's data)
+        if (isFirstCall) {
+          isFirstCall = false;
+          // If firebase has data and it's different from what we wrote, apply it
+          if (data.updatedAt && data.updatedAt !== this.lastWrittenAt) {
+            onUpdate(data);
+          }
+          return;
+        }
+
+        // Subsequent calls: only apply if strictly newer than our last write
+        // This prevents our own push from echoing back and overwriting local state
+        if (data.updatedAt && data.updatedAt > this.lastWrittenAt) {
+          onUpdate(data);
+        }
+      },
+      (error) => {
+        console.warn('DuoDone: Firebase onValue error:', error);
+        // If access denied, notify caller
+        if (error.message?.includes('Permission denied')) {
+          this.unsubscribe();
+          if (onDenied) onDenied();
+        }
+      }
+    );
+  }
+
+  // в”Ђв”Ђ Check space access via API (join_check) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   public async checkSpaceAccess(
     inviteCode: string,
     requestingUserId?: string,
     requestingTgId?: string | number,
     requestingTgUsername?: string
   ): Promise<{ allowed: boolean; is_locked?: boolean; message?: string }> {
-    const code = this.sanitizeCode(inviteCode);
+    const code = sanitizeCode(inviteCode);
     if (!code) return { allowed: true };
+
+    // Check Firebase directly: count real members
     try {
-      const url = `/api/sync?code=${code}&action=join_check&userId=${requestingUserId || ''}&tgId=${requestingTgId || ''}&tgUsername=${requestingTgUsername || ''}`;
-      const res = await fetch(url);
-      if (res.status === 403) {
-        const body = await res.json();
-        return { allowed: false, is_locked: true, message: body.message };
+      const snapshot = await get(spaceRef(code));
+      if (snapshot.exists()) {
+        const data = snapshot.val() as CloudState;
+        const realMembers = (data.users || []).filter((u: User) => !u.is_placeholder);
+        if (realMembers.length >= 2) {
+          // Space is full вЂ” check if requesting user is one of the members
+          const memberTgIds = realMembers.map((u: User) => String(u.telegram_id || '').trim()).filter(Boolean);
+          const memberUserIds = realMembers.map((u: User) => String(u.id || ''));
+          const memberTgUsernames = realMembers
+            .map((u: User) => String(u.telegram_username || '').replace('@', '').toLowerCase())
+            .filter(Boolean);
+
+          const allowed =
+            (requestingTgId && memberTgIds.includes(String(requestingTgId))) ||
+            (requestingTgUsername && memberTgUsernames.includes(String(requestingTgUsername).toLowerCase())) ||
+            (requestingUserId && memberUserIds.includes(requestingUserId)) ||
+            !realMembers.some((u: User) => u.telegram_id); // migration: no TG IDs yet
+
+          if (!allowed) {
+            return {
+              allowed: false,
+              is_locked: true,
+              message: 'Р¦РµР№ РїСЂРѕСЃС‚С–СЂ РІР¶Рµ СЃС„РѕСЂРјРѕРІР°РЅРёР№ РґР»СЏ 2 РїР°СЂС‚РЅРµСЂС–РІ. РЎС‚РІРѕСЂС–С‚СЊ СЃРІС–Р№ РІР»Р°СЃРЅРёР№!',
+            };
+          }
+        }
       }
     } catch {}
+
     return { allowed: true };
   }
 
-  // Fetch household state from cloud by invite code with requestingUserId access control
-  public async fetchHouseholdByCode(
-    inviteCode: string,
-    requestingUserId?: string,
-    requestingTgId?: string | number,
-    requestingTgUsername?: string
-  ): Promise<CloudState | null> {
-    if (!inviteCode) return null;
-    const code = this.sanitizeCode(inviteCode);
-
-    // 1. Try Vercel Serverless Endpoint
-    try {
-      const url = `/api/sync?code=${code}&userId=${requestingUserId || ''}&tgId=${requestingTgId || ''}&tgUsername=${requestingTgUsername || ''}`;
-      const res = await fetch(url);
-      if (res.status === 403) return null;
-      if (res.ok) {
-        const data = (await res.json()) as CloudState;
-        if (data && data.household) {
-          return data;
-        }
-      }
-    } catch (err) {
-      console.warn('fetchHouseholdByCode api error:', err);
-    }
-
-    // 2. Direct fallback to Firebase Realtime Database
-    try {
-      const res = await fetch(`${FIREBASE_DB_URL}/households/${code}.json`);
-      if (res.ok) {
-        const data = (await res.json()) as CloudState;
-        if (data && data.household) {
-          return data;
-        }
-      }
-    } catch (err) {
-      console.warn('fetchHouseholdByCode direct firebase error:', err);
-    }
-
-    return null;
-  }
-
-  // Subscribe to real-time changes for a household (Polling Engine).
-  // Performs an initial seed fetch before starting the interval so that the
-  // first poll tick does NOT spuriously fire onUpdate with stale cloud data.
-  public subscribeToHousehold(
-    inviteCode: string,
-    requestingUserId: string,
-    onUpdate: (data: CloudState) => void,
-    onDenied?: () => void,
-    requestingTgId?: string | number,
-    requestingTgUsername?: string
-  ): void {
-    if (!inviteCode) return;
-    const code = this.sanitizeCode(inviteCode);
-
-    // Stop any previous subscription
-    this.unsubscribe();
-    this.currentPollCode = code;
-    this.consecutiveErrors = 0;
-
-    // Seed lastKnownUpdatedAt so the first poll tick won't immediately fire onUpdate
-    this.fetchHouseholdByCode(code, requestingUserId, requestingTgId, requestingTgUsername)
-      .then((seedData) => {
-        if (seedData?.updatedAt) {
-          if (!this.lastKnownUpdatedAt || seedData.updatedAt > this.lastKnownUpdatedAt) {
-            this.lastKnownUpdatedAt = seedData.updatedAt;
-          }
-        }
-      })
-      .catch(() => {});
-
-    this.activePollInterval = setInterval(async () => {
-      // Guard: stop if subscription changed to another code
-      if (this.currentPollCode !== code) {
-        clearInterval(this.activePollInterval);
-        this.activePollInterval = null;
-        return;
-      }
-
-      try {
-        const freshData = await this.fetchHouseholdByCode(
-          code,
-          requestingUserId,
-          requestingTgId,
-          requestingTgUsername
-        );
-
-        this.consecutiveErrors = 0;
-
-        if (freshData && freshData.household) {
-          if (
-            freshData.updatedAt &&
-            freshData.updatedAt !== this.lastKnownUpdatedAt &&
-            // Only accept data strictly newer than our last known timestamp
-            freshData.updatedAt > this.lastKnownUpdatedAt
-          ) {
-            this.lastKnownUpdatedAt = freshData.updatedAt;
-            onUpdate(freshData);
-          }
-        } else if (freshData === null) {
-          // null = 403 access denied
-          const access = await this.checkSpaceAccess(code, requestingUserId);
-          if (!access.allowed) {
-            this.unsubscribe();
-            if (onDenied) onDenied();
-          }
-        }
-      } catch {
-        this.consecutiveErrors++;
-        if (this.consecutiveErrors >= 10) {
-          console.warn('DuoDone: Polling stopped after 10 consecutive errors for code:', code);
-          this.unsubscribe();
-        }
-      }
-    }, 3000);
-  }
-
-  // Stop active listener and reset state
+  // в”Ђв”Ђ Stop listening в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   public unsubscribe(): void {
-    if (this.activePollInterval) {
-      clearInterval(this.activePollInterval);
-      this.activePollInterval = null;
+    if (this.currentListener) {
+      off(this.currentListener);
+      this.currentListener = null;
     }
-    this.currentPollCode = '';
-    // Reset lastKnownUpdatedAt so next subscription starts fresh
-    this.lastKnownUpdatedAt = '';
-    this.consecutiveErrors = 0;
+    this.lastWrittenAt = '';
   }
 }
 
 export const cloudSync = new FirebaseSyncService();
+

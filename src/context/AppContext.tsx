@@ -486,9 +486,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setActivityLogs(loadedLogs);
     setRouletteItems(loadedRoulette);
 
-    // Subscribe to cloud real-time updates for this household code.
-    // The subscription itself will do an initial seed-fetch internally to avoid
-    // false-triggering on the first poll tick.
+    // Subscribe to cloud real-time updates.
+    // Firebase onValue() automatically fires once on connect with current data,
+    // then fires again each time partner makes a change. No polling needed.
     if (storedHousehold.invite_code) {
       cloudSync.subscribeToHousehold(
         storedHousehold.invite_code,
@@ -528,48 +528,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         currentTgId,
         currentTgUsername
       );
+    }
 
-      // Also do an initial cloud fetch to apply any changes made by partner since last session
-      cloudSync.fetchHouseholdByCode(storedHousehold.invite_code, storage.getActiveUserId(), currentTgId, currentTgUsername)
-        .then((freshCloud) => {
-          if (freshCloud && freshCloud.household && freshCloud.updatedAt) {
-            // Apply fresh cloud data on startup — ensures we're in sync with partner
-            if (freshCloud.household) {
-              setHousehold(freshCloud.household);
-              storage.saveHousehold(freshCloud.household);
-              storage.saveHouseholdToList(freshCloud.household);
-              setHouseholdsList(storage.getHouseholdsList());
-            }
-            if (freshCloud.users) {
-              setUsers(freshCloud.users);
-              storage.saveUsers(freshCloud.users);
-            }
-            if (freshCloud.tasks) {
-              setTasks(freshCloud.tasks);
-              storage.saveTasks(freshCloud.tasks);
-            }
-            if (freshCloud.counters) {
-              setCounters(freshCloud.counters);
-              storage.saveCounters(freshCloud.counters);
-            }
-            if (freshCloud.activityLogs) {
-              setActivityLogs(freshCloud.activityLogs);
-              storage.saveActivityLogs(freshCloud.activityLogs);
-            }
-            if (freshCloud.rouletteItems) {
-              setRouletteItems(freshCloud.rouletteItems);
-              storage.saveRouletteItems(freshCloud.rouletteItems);
-            }
-            storage.saveSpaceSnapshot(storedHousehold.id);
-          }
-        })
-        .catch(() => {});
-
-      // Push local state to cloud to seed it (for creator's first launch)
-      pushStateToCloud(storedHousehold, storedUsers, loadedTasks, loadedCounters, loadedLogs, loadedRoulette);
-    } else {
-      // No invite code — just push local state
-      pushStateToCloud(storedHousehold, storedUsers, loadedTasks, loadedCounters, loadedLogs, loadedRoulette);
+    // Smart startup push: only push if Firebase has no data for this space yet.
+    // This prevents overwriting partner's changes when re-opening the app.
+    if (storedHousehold.invite_code) {
+      cloudSync.fetchHouseholdByCode(storedHousehold.invite_code).then((existing) => {
+        if (!existing) {
+          // Firebase is empty — this is the creator's very first push
+          pushStateToCloud(storedHousehold, storedUsers, loadedTasks, loadedCounters, loadedLogs, loadedRoulette);
+        }
+        // If data already exists, onValue() subscription will deliver it (no push needed)
+      }).catch(() => {
+        // If fetch fails, push anyway as a safety measure
+        pushStateToCloud(storedHousehold, storedUsers, loadedTasks, loadedCounters, loadedLogs, loadedRoulette);
+      });
     }
   };
 
@@ -785,47 +758,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setRouletteItems(storage.getRouletteItems());
       }
 
-      // Subscribe to cloud for target space
+      // Subscribe to the target space — Firebase onValue fires immediately with current data
       const tgUser = getTelegramUser();
       const tgId = tgUser?.id ? String(tgUser.id) : '';
       const tgUsername = tgUser?.username ? tgUser.username.replace('@', '').toLowerCase() : '';
 
       if (target.invite_code) {
-        cloudSync.subscribeToHousehold(target.invite_code, storage.getActiveUserId(), (cloudData: CloudState) => {
-          if (cloudData) {
-            if (cloudData.household) {
-              setHousehold(cloudData.household);
-              storage.saveHousehold(cloudData.household);
-              storage.saveHouseholdToList(cloudData.household);
-              setHouseholdsList(storage.getHouseholdsList());
+        cloudSync.subscribeToHousehold(
+          target.invite_code,
+          storage.getActiveUserId(),
+          (cloudData: CloudState) => {
+            if (cloudData) {
+              if (cloudData.household) {
+                setHousehold(cloudData.household);
+                storage.saveHousehold(cloudData.household);
+                storage.saveHouseholdToList(cloudData.household);
+                setHouseholdsList(storage.getHouseholdsList());
+              }
+              if (cloudData.users) { setUsers(cloudData.users); storage.saveUsers(cloudData.users); }
+              if (cloudData.tasks) { setTasks(cloudData.tasks); storage.saveTasks(cloudData.tasks); }
+              if (cloudData.counters) { setCounters(cloudData.counters); storage.saveCounters(cloudData.counters); }
+              if (cloudData.activityLogs) { setActivityLogs(cloudData.activityLogs); storage.saveActivityLogs(cloudData.activityLogs); }
+              if (cloudData.rouletteItems) { setRouletteItems(cloudData.rouletteItems); storage.saveRouletteItems(cloudData.rouletteItems); }
+              storage.saveSpaceSnapshot(householdId);
             }
-            if (cloudData.users) {
-              setUsers(cloudData.users);
-              storage.saveUsers(cloudData.users);
-            }
-            if (cloudData.tasks) {
-              setTasks(cloudData.tasks);
-              storage.saveTasks(cloudData.tasks);
-            }
-            if (cloudData.counters) {
-              setCounters(cloudData.counters);
-              storage.saveCounters(cloudData.counters);
-            }
-            if (cloudData.activityLogs) {
-              setActivityLogs(cloudData.activityLogs);
-              storage.saveActivityLogs(cloudData.activityLogs);
-            }
-            if (cloudData.rouletteItems) {
-              setRouletteItems(cloudData.rouletteItems);
-              storage.saveRouletteItems(cloudData.rouletteItems);
-            }
-            // Save snapshot after cloud sync
-            storage.saveSpaceSnapshot(householdId);
-          }
-        }, undefined, tgId, tgUsername);
+          },
+          undefined,
+          tgId,
+          tgUsername
+        );
       }
     }
   };
+
 
   // Create New Space / Household
   const handleCreateNewHousehold = async (name?: string): Promise<Household> => {
