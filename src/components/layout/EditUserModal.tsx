@@ -124,9 +124,22 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
 
         <form onSubmit={handleSave} className="space-y-4">
           {/* Partner 1 */}
-          <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50 space-y-2.5">
+          <div className={`p-3.5 rounded-xl border space-y-2.5 transition-all ${
+            activeUser.id === user1.id
+              ? 'bg-indigo-950/40 border-indigo-500/60 shadow-md'
+              : 'bg-slate-800/60 border-slate-700/50'
+          }`}>
             <label className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider flex items-center justify-between">
-              <span className="flex items-center gap-1">{t('partner_1_label')}</span>
+              <span className="flex items-center gap-1.5">
+                <span>{t('partner_1_label')}</span>
+                <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${
+                  activeUser.id === user1.id
+                    ? 'bg-indigo-500/30 text-indigo-200 border border-indigo-500/40'
+                    : 'bg-slate-700/60 text-slate-400'
+                }`}>
+                  {activeUser.id === user1.id ? '⭐ Ви на цьому пристрої' : 'Партнер'}
+                </span>
+              </span>
               <span className="text-[10px] text-slate-400 font-normal">{t('eum_photo_name')}</span>
             </label>
 
@@ -179,9 +192,22 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ onClose }) => {
           </div>
 
           {/* Partner 2 */}
-          <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50 space-y-2.5">
+          <div className={`p-3.5 rounded-xl border space-y-2.5 transition-all ${
+            activeUser.id === user2.id
+              ? 'bg-pink-950/40 border-pink-500/60 shadow-md'
+              : 'bg-slate-800/60 border-slate-700/50'
+          }`}>
             <label className="text-[11px] font-bold text-pink-400 uppercase tracking-wider flex items-center justify-between">
-              <span className="flex items-center gap-1">{t('partner_2_label')}</span>
+              <span className="flex items-center gap-1.5">
+                <span>{t('partner_2_label')}</span>
+                <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${
+                  activeUser.id === user2.id
+                    ? 'bg-pink-500/30 text-pink-200 border border-pink-500/40'
+                    : 'bg-slate-700/60 text-slate-400'
+                }`}>
+                  {activeUser.id === user2.id ? '⭐ Ви на цьому пристрої' : 'Партнер'}
+                </span>
+              </span>
               <span className="text-[10px] text-slate-400 font-normal">{t('eum_photo_name')}</span>
             </label>
 

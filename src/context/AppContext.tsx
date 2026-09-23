@@ -532,17 +532,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       );
     }
 
-    // Smart startup push: only push if Firebase has no data for this space yet.
-    // This prevents overwriting partner's changes when re-opening the app.
+    // Startup sync with cloud
     if (storedHousehold.invite_code) {
       cloudSync.fetchHouseholdByCode(storedHousehold.invite_code).then((existing) => {
         if (!existing) {
-          // Firebase is empty — this is the creator's very first push
+          // Space not in cloud yet — push immediately so partner can join
           pushStateToCloud(storedHousehold, storedUsers, loadedTasks, loadedCounters, loadedLogs, loadedRoulette);
+        } else if (existing.users && existing.users.length >= 2) {
+          // Sync users if cloud already has both partners configured
+          setUsers(existing.users);
+          storage.saveUsers(existing.users);
         }
-        // If data already exists, onValue() subscription will deliver it (no push needed)
       }).catch(() => {
-        // If fetch fails, push anyway as a safety measure
         pushStateToCloud(storedHousehold, storedUsers, loadedTasks, loadedCounters, loadedLogs, loadedRoulette);
       });
     }
