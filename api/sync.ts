@@ -58,7 +58,7 @@ function isAuthorized(
 // Fetch helper from Firebase Realtime Database
 async function fetchFromFirebase(code: string): Promise<any | null> {
   try {
-    const res = await fetch(`${FIREBASE_DB_URL}/households/${code}.json`);
+    const res = await fetch(`${FIREBASE_DB_URL}/spaces/${code}.json`);
     if (res.ok) {
       const data = await res.json();
       if (data && data.household) {
@@ -74,7 +74,7 @@ async function fetchFromFirebase(code: string): Promise<any | null> {
 // Save helper to Firebase Realtime Database
 async function saveToFirebase(code: string, data: any): Promise<void> {
   try {
-    await fetch(`${FIREBASE_DB_URL}/households/${code}.json`, {
+    await fetch(`${FIREBASE_DB_URL}/spaces/${code}.json`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),

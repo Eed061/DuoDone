@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { User, Household, Task, Counter, ActivityLog, RouletteItem } from '../types';
 import { storage, defaultTasks, defaultCounters, defaultRouletteItems, defaultUsers } from '../services/storage';
-import { cloudSync, CloudState } from '../services/firebaseSync';
+import { cloudSync, CloudState, extractInviteCode } from '../services/firebaseSync';
 import { triggerHaptic, triggerSuccessHaptic, initTelegramWebApp, getTelegramUser } from '../services/telegram';
 import { Language, getTranslation } from '../i18n/translations';
 
@@ -122,14 +122,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const fullStart = rawInviteParam || tgStartParam || '';
 
     // Extract invite code if passed (e.g., DUO-7789 or accept_DUO-7789)
-    let extractedCode = '';
-    if (fullStart) {
-      const match = fullStart.match(/([A-Z0-9]{3,4}-?[A-Z0-9]{3,4})/i);
-      if (match) extractedCode = match[1].toUpperCase();
-      else if (fullStart.includes('_')) extractedCode = fullStart.split('_')[1].toUpperCase();
-      else extractedCode = fullStart.toUpperCase();
-    }
-
+    const extractedCode = extractInviteCode(fullStart);
     const isInvitedPartner = fullStart.includes('accept') || fullStart.includes('join') || roleParam === 'p2' || Boolean(extractedCode);
     const activeUId = storage.getActiveUserId();
 
@@ -144,8 +137,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         storage.saveSpaceSnapshot(currentHh.id);
       }
 
-      // Always try to fetch cloud data
-      const cloudData = await cloudSync.fetchHouseholdByCode(extractedCode, activeUId, currentTgId, currentTgUsername);
+      // Always try to fetch cloud data with retry
+      let cloudData = await cloudSync.fetchHouseholdByCode(extractedCode, activeUId, currentTgId, currentTgUsername);
+      if (!cloudData) {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          await new Promise((r) => setTimeout(r, 400));
+          cloudData = await cloudSync.fetchHouseholdByCode(extractedCode, activeUId, currentTgId, currentTgUsername);
+          if (cloudData) break;
+        }
+      }
 
       if (cloudData && cloudData.household) {
         const cloudUsers: User[] = cloudData.users ? [...cloudData.users] : [];
@@ -217,10 +217,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           storage.setActiveUserId(u2!.id);
           localStorage.setItem('duodone_user_role', 'p2');
         } else if (u2 && (u2.is_placeholder || !u2TgId)) {
-          // Open slot — join as Partner 2
-          const p2Name = !isGenericName(u2.first_name) ? u2.first_name : (telegramUser?.first_name || 'Партнер 2');
+          // Open slot — join as Partner 2. PRESERVE Partner 1 (Dmitry) 100%!
+          const p2Name = telegramUser?.first_name || (!isGenericName(u2.first_name) ? u2.first_name : 'Партнер 2');
           cloudUsers[1] = {
             ...u2,
+            id: activeUId || cloudUsers[1]?.id || `usr-p2-${Date.now()}`,
             telegram_id: telegramUser?.id,
             telegram_username: telegramUser?.username || u2.telegram_username,
             first_name: p2Name,
@@ -229,6 +230,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           storedUsers = cloudUsers;
           storedHousehold = {
             ...cloudData.household,
+            is_locked: true,
             members: [
               ...(cloudData.household.members || []).filter(m => m.role !== 'p2'),
               {
@@ -919,12 +921,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const joinHouseholdByCode = async (code: string): Promise<{ success: boolean; reason?: string }> => {
     triggerHaptic('heavy');
 
+    const cleanCode = extractInviteCode(code);
+    if (!cleanCode) return { success: false, reason: 'not_found' };
+
     const tgUser = getTelegramUser();
     const currentTgId = tgUser?.id ? String(tgUser.id) : '';
     const currentTgUsername = tgUser?.username ? tgUser.username.replace('@', '').toLowerCase() : '';
 
     // Access control check for 3rd party
-    const access = await cloudSync.checkSpaceAccess(code, activeUserId, currentTgId, currentTgUsername);
+    const access = await cloudSync.checkSpaceAccess(cleanCode, activeUserId, currentTgId, currentTgUsername);
     if (!access.allowed) {
       return { success: false, reason: 'space_full' };
     }
@@ -934,7 +939,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       storage.saveSpaceSnapshot(household.id);
     }
 
-    const cloudData = await cloudSync.fetchHouseholdByCode(code, activeUserId, currentTgId, currentTgUsername);
+    let cloudData = await cloudSync.fetchHouseholdByCode(cleanCode, activeUserId, currentTgId, currentTgUsername);
+    if (!cloudData) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        await new Promise((r) => setTimeout(r, 400));
+        cloudData = await cloudSync.fetchHouseholdByCode(cleanCode, activeUserId, currentTgId, currentTgUsername);
+        if (cloudData) break;
+      }
+    }
 
     if (cloudData && cloudData.household) {
       let updatedUsers = [...(cloudData.users || [])];
@@ -950,9 +962,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           created_at: new Date().toISOString(),
         });
       } else {
-        const p2Name = !isGenericName(updatedUsers[1]?.first_name)
+        const p2Name = tgUser?.first_name || (!isGenericName(updatedUsers[1]?.first_name)
           ? updatedUsers[1].first_name
-          : (tgUser?.first_name || 'Партнер 2');
+          : 'Партнер 2');
 
         updatedUsers[1] = {
           ...updatedUsers[1],

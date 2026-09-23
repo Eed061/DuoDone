@@ -7,8 +7,10 @@ import { EditUserModal } from '../layout/EditUserModal';
 import { CreateSpaceModal } from '../layout/CreateSpaceModal';
 import { SpaceManagementModal } from './SpaceManagementModal';
 
+import { cloudSync } from '../../services/firebaseSync';
+
 export const HouseholdShareModal: React.FC = () => {
-  const { household, updateHousehold, users, resetCycle, factoryReset, language, t, joinHouseholdByCode, disconnectPartner } = useApp();
+  const { household, updateHousehold, users, tasks, counters, activityLogs, rouletteItems, resetCycle, factoryReset, language, t, joinHouseholdByCode, disconnectPartner, activeUser } = useApp();
   const [copiedCard, setCopiedCard] = useState(false);
   const [nameInput, setNameInput] = useState(household.name || 'Наш дім');
   const [showEditUserModal, setShowEditUserModal] = useState(false);
@@ -46,12 +48,21 @@ export const HouseholdShareModal: React.FC = () => {
   const user1Name = translateEntityTitle(rawUser1Name, language);
   const user2Name = translateEntityTitle(rawUser2Name, language);
 
-  const inviteCode = household.invite_code || 'DUO7789';
+  const inviteCode = household.invite_code || 'DUO-7789';
   const botInviteLink = `https://t.me/DuoDone_bot?start=accept_${inviteCode}`;
   const isLocked = Boolean(household.is_locked) || users.filter((u) => !u.is_placeholder).length >= 2;
 
   const handleSendTelegramInvite = () => {
-    const messageText = t('hsm_invite_msg', { partner: user2Name, link: botInviteLink });
+    cloudSync.pushStateImmediate({
+      household,
+      users,
+      tasks,
+      counters,
+      activityLogs,
+      rouletteItems,
+    });
+    const inviterName = activeUser.first_name || user1Name;
+    const messageText = `🤝 Привіт! Запрошую тебе вести спільний побут у DuoDone! 🏓✨\n\nПриєднатися до простору «${household.name || 'Наш дім'}» від ${inviterName}:\n${botInviteLink}`;
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(botInviteLink)}&text=${encodeURIComponent(messageText)}`;
 
     if (navigator.share) {
@@ -68,7 +79,16 @@ export const HouseholdShareModal: React.FC = () => {
   };
 
   const handleCopyInviteCardText = () => {
-    const cardText = t('hsm_invite_msg', { partner: user2Name, link: botInviteLink });
+    cloudSync.pushStateImmediate({
+      household,
+      users,
+      tasks,
+      counters,
+      activityLogs,
+      rouletteItems,
+    });
+    const inviterName = activeUser.first_name || user1Name;
+    const cardText = `🤝 Привіт! Запрошую тебе вести спільний побут у DuoDone! 🏓✨\n\nПриєднатися до простору «${household.name || 'Наш дім'}» від ${inviterName}:\n${botInviteLink}`;
     navigator.clipboard.writeText(cardText);
     triggerSuccessHaptic();
     setCopiedCard(true);

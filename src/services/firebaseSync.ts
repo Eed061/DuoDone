@@ -8,7 +8,6 @@ import {
   off,
   DatabaseReference,
   Database,
-  serverTimestamp,
 } from 'firebase/database';
 import { Household, Task, Counter, ActivityLog, RouletteItem, User } from '../types';
 
@@ -23,7 +22,7 @@ export interface CloudState {
   updatedByUserId?: string;
 }
 
-// в”Ђв”Ђв”Ђ Firebase init (safe: only once) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ─── Firebase init (safe: only once) ─────────────────────────────────────────
 const FIREBASE_CONFIG = {
   databaseURL: 'https://duodone-f4f09-default-rtdb.europe-west1.firebasedatabase.app',
 };
@@ -40,19 +39,38 @@ function spaceRef(code: string): DatabaseReference {
   return ref(getDb(), `spaces/${code}`);
 }
 
-// в”Ђв”Ђв”Ђ Sanitize invite code в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ─── Sanitize & Extract invite code ─────────────────────────────────────────
 export function sanitizeCode(code: string): string {
   return (code || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
 }
 
-// в”Ђв”Ђв”Ђ FirebaseSyncService в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+export function extractInviteCode(param: string): string {
+  if (!param) return '';
+  let cleaned = String(param).trim();
+  try {
+    cleaned = decodeURIComponent(cleaned);
+  } catch {}
+
+  if (cleaned.toLowerCase().startsWith('accept_')) {
+    cleaned = cleaned.slice(7);
+  } else if (cleaned.toLowerCase().startsWith('join_')) {
+    cleaned = cleaned.slice(5);
+  } else if (cleaned.includes('_')) {
+    const parts = cleaned.split('_');
+    cleaned = parts[parts.length - 1];
+  }
+
+  const match = cleaned.match(/[A-Z0-9]{3,6}(?:-[A-Z0-9]{2,6})?/i);
+  return match ? sanitizeCode(match[0]) : sanitizeCode(cleaned);
+}
+
+// ─── FirebaseSyncService ─────────────────────────────────────────────────────
 export class FirebaseSyncService {
   private pushTimer: any = null;
   private currentListener: DatabaseReference | null = null;
   private lastWrittenAt = '';
 
-  // в”Ђв”Ђ Push full state to Firebase RTDB в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
-  // Debounced 250ms so rapid UI clicks collapse into one write.
+  // ── Push full state to Firebase RTDB (REST + WebSocket SDK) ──────────────
   public pushState(
     state: Omit<CloudState, 'updatedAt'>,
     _requestingUserId?: string
@@ -68,25 +86,67 @@ export class FirebaseSyncService {
         updatedAt: new Date().toISOString(),
       };
 
-      // Mark own write time so the onValue listener ignores this echo
       this.lastWrittenAt = dataToSave.updatedAt;
 
+      // 1. Direct REST PUT to Firebase RTDB (synchronous, 100% reliable across all browsers and iOS WKWebView)
       try {
-        // PRIMARY: direct Firebase SDK write (always works вЂ” no Vercel, no cold start)
+        fetch(`${FIREBASE_CONFIG.databaseURL}/spaces/${code}.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dataToSave),
+        }).catch((e) => console.warn('DuoDone: Firebase REST PUT error:', e));
+      } catch {}
+
+      // 2. Direct Firebase SDK write (fires Realtime listeners immediately)
+      try {
         await set(spaceRef(code), dataToSave);
       } catch (err) {
-        console.warn('DuoDone: Firebase write failed, retrying via API...', err);
-        // FALLBACK: Vercel API (keeps Vercel store in sync for access control)
-        fetch(`/api/sync?code=${code}`, {
+        console.warn('DuoDone: Firebase SDK set failed:', err);
+      }
+
+      // 3. Fallback Vercel API
+      try {
+        const apiUrl = typeof window !== 'undefined' && window.location?.origin
+          ? `${window.location.origin}/api/sync?code=${code}`
+          : `/api/sync?code=${code}`;
+        fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(dataToSave),
         }).catch(() => {});
-      }
-    }, 250);
+      } catch {}
+    }, 150);
   }
 
-  // в”Ђв”Ђ Fetch once from Firebase в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  // ── Immediate synchronous push (for explicit user actions: share, create) ──
+  public async pushStateImmediate(
+    state: Omit<CloudState, 'updatedAt'>
+  ): Promise<void> {
+    if (!state.household?.invite_code) return;
+    if (this.pushTimer) clearTimeout(this.pushTimer);
+
+    const code = sanitizeCode(state.household.invite_code);
+    const dataToSave: CloudState = {
+      ...state,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.lastWrittenAt = dataToSave.updatedAt;
+
+    try {
+      await fetch(`${FIREBASE_CONFIG.databaseURL}/spaces/${code}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dataToSave),
+      });
+    } catch {}
+
+    try {
+      await set(spaceRef(code), dataToSave);
+    } catch {}
+  }
+
+  // ── Fetch once from Firebase (Direct REST + SDK get + Vercel API fallback) ─
   public async fetchHouseholdByCode(
     inviteCode: string,
     _requestingUserId?: string,
@@ -96,6 +156,20 @@ export class FirebaseSyncService {
     if (!inviteCode) return null;
     const code = sanitizeCode(inviteCode);
 
+    // 1. PRIMARY: Direct Firebase REST API (fast, reliable, no WebSocket dependencies)
+    try {
+      const res = await fetch(`${FIREBASE_CONFIG.databaseURL}/spaces/${code}.json`, {
+        cache: 'no-store',
+      });
+      if (res.ok) {
+        const data = (await res.json()) as CloudState;
+        if (data && data.household) return data;
+      }
+    } catch (err) {
+      console.warn('DuoDone: fetchHouseholdByCode REST error:', err);
+    }
+
+    // 2. Firebase SDK get()
     try {
       const snapshot = await get(spaceRef(code));
       if (snapshot.exists()) {
@@ -103,12 +177,15 @@ export class FirebaseSyncService {
         if (data && data.household) return data;
       }
     } catch (err) {
-      console.warn('DuoDone: fetchHouseholdByCode Firebase error:', err);
+      console.warn('DuoDone: fetchHouseholdByCode Firebase SDK error:', err);
     }
 
-    // Fallback to Vercel API if Firebase unavailable
+    // 3. Fallback to Vercel API if Firebase unavailable
     try {
-      const res = await fetch(`/api/sync?code=${code}`);
+      const apiUrl = typeof window !== 'undefined' && window.location?.origin
+        ? `${window.location.origin}/api/sync?code=${code}`
+        : `/api/sync?code=${code}`;
+      const res = await fetch(apiUrl);
       if (res.ok) {
         const data = (await res.json()) as CloudState;
         if (data && data.household) return data;
@@ -118,10 +195,7 @@ export class FirebaseSyncService {
     return null;
   }
 
-  // ── Real-time subscription via Firebase onValue (WebSocket) ────────────────
-  // onValue() opens a persistent WebSocket to Firebase.
-  // When partner saves data, Firebase pushes it to this client in ~100ms.
-  // Firebase SDK automatically reconnects after iOS background suspension.
+  // ── Real-time subscription via Firebase onValue + iOS Visibility & Polling Fallback ──
   public subscribeToHousehold(
     inviteCode: string,
     requestingUserId: string,
@@ -139,42 +213,33 @@ export class FirebaseSyncService {
     const dbRef = spaceRef(code);
     this.currentListener = dbRef;
 
-    // lastSeenAt tracks the updatedAt of the last data we APPLIED.
-    // It's separate from lastWrittenAt (our own writes).
     let lastSeenAt = '';
 
+    const handleIncomingData = (data: CloudState) => {
+      if (!data || !data.household) return;
+      const incomingAt = data.updatedAt || '';
+
+      if (incomingAt && incomingAt === this.lastWrittenAt && incomingAt === lastSeenAt) {
+        return;
+      }
+
+      if (!lastSeenAt || incomingAt > lastSeenAt) {
+        if (incomingAt && incomingAt === this.lastWrittenAt) {
+          lastSeenAt = incomingAt;
+          return;
+        }
+        lastSeenAt = incomingAt;
+        onUpdate(data);
+      }
+    };
+
+    // 1. Realtime WebSocket listener via Firebase SDK
     onValue(
       dbRef,
       (snapshot) => {
-        if (!snapshot.exists()) {
-          // No data yet in Firebase — normal for a brand new space.
-          return;
-        }
-
+        if (!snapshot.exists()) return;
         const data = snapshot.val() as CloudState;
-        if (!data || !data.household) return;
-
-        const incomingAt = data.updatedAt || '';
-
-        // Skip if this is a pure echo of our own latest write
-        // AND we haven't seen anything newer from the partner yet
-        if (incomingAt && incomingAt === this.lastWrittenAt && incomingAt === lastSeenAt) {
-          return;
-        }
-
-        // Apply if:
-        // 1. We haven't seen this version yet (covers first load + iOS reconnect)
-        // 2. The data is newer than what we last saw
-        if (!lastSeenAt || incomingAt > lastSeenAt) {
-          // Don't apply our own echo (we already have this data locally)
-          if (incomingAt && incomingAt === this.lastWrittenAt) {
-            // It's our own data echoed back — update lastSeenAt but don't re-apply
-            lastSeenAt = incomingAt;
-            return;
-          }
-          lastSeenAt = incomingAt;
-          onUpdate(data);
-        }
+        handleIncomingData(data);
       },
       (error) => {
         console.warn('DuoDone: Firebase onValue error:', error);
@@ -185,27 +250,39 @@ export class FirebaseSyncService {
       }
     );
 
-    // iOS fix: when user returns to Telegram from background,
-    // Firebase SDK reconnects automatically, but we add a visibilitychange
-    // listener to force a one-time re-fetch in case reconnect is slow.
+    // 2. Direct REST poll check helper (guarantees sync on iOS when WebSockets pause)
+    const checkViaRest = async () => {
+      try {
+        const res = await fetch(`${FIREBASE_CONFIG.databaseURL}/spaces/${code}.json`, {
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const data = (await res.json()) as CloudState;
+          if (data && data.household) {
+            handleIncomingData(data);
+          }
+        }
+      } catch {}
+    };
+
+    // 3. iOS foreground return listener (visibilitychange)
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        get(spaceRef(code)).then((snapshot) => {
-          if (!snapshot.exists()) return;
-          const data = snapshot.val() as CloudState;
-          if (!data?.household) return;
-          const incomingAt = data.updatedAt || '';
-          if (incomingAt && incomingAt > lastSeenAt && incomingAt !== this.lastWrittenAt) {
-            lastSeenAt = incomingAt;
-            onUpdate(data);
-          }
-        }).catch(() => {});
+        checkViaRest();
       }
     };
     document.addEventListener('visibilitychange', onVisible);
-    // Store cleanup function to remove listener on unsubscribe
-    (this as any)._visibilityCleanup = () => {
+
+    // 4. Periodic polling backup (every 3.5s) while app is open
+    const pollInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        checkViaRest();
+      }
+    }, 3500);
+
+    (this as any)._cleanup = () => {
       document.removeEventListener('visibilitychange', onVisible);
+      clearInterval(pollInterval);
     };
   }
 
@@ -219,14 +296,11 @@ export class FirebaseSyncService {
     const code = sanitizeCode(inviteCode);
     if (!code) return { allowed: true };
 
-    // Check Firebase directly: count real members
     try {
-      const snapshot = await get(spaceRef(code));
-      if (snapshot.exists()) {
-        const data = snapshot.val() as CloudState;
+      const data = await this.fetchHouseholdByCode(code);
+      if (data && data.users) {
         const realMembers = (data.users || []).filter((u: User) => !u.is_placeholder);
         if (realMembers.length >= 2) {
-          // Space is full вЂ” check if requesting user is one of the members
           const memberTgIds = realMembers.map((u: User) => String(u.telegram_id || '').trim()).filter(Boolean);
           const memberUserIds = realMembers.map((u: User) => String(u.id || ''));
           const memberTgUsernames = realMembers
@@ -237,13 +311,13 @@ export class FirebaseSyncService {
             (requestingTgId && memberTgIds.includes(String(requestingTgId))) ||
             (requestingTgUsername && memberTgUsernames.includes(String(requestingTgUsername).toLowerCase())) ||
             (requestingUserId && memberUserIds.includes(requestingUserId)) ||
-            !realMembers.some((u: User) => u.telegram_id); // migration: no TG IDs yet
+            !realMembers.some((u: User) => u.telegram_id);
 
           if (!allowed) {
             return {
               allowed: false,
               is_locked: true,
-              message: 'Р¦РµР№ РїСЂРѕСЃС‚С–СЂ РІР¶Рµ СЃС„РѕСЂРјРѕРІР°РЅРёР№ РґР»СЏ 2 РїР°СЂС‚РЅРµСЂС–РІ. РЎС‚РІРѕСЂС–С‚СЊ СЃРІС–Р№ РІР»Р°СЃРЅРёР№!',
+              message: 'Цей простір вже сформований для 2 партнерів. Створіть свій власний!',
             };
           }
         }
@@ -259,14 +333,12 @@ export class FirebaseSyncService {
       off(this.currentListener);
       this.currentListener = null;
     }
-    // Clean up iOS visibilitychange listener if one was registered
-    if ((this as any)._visibilityCleanup) {
-      (this as any)._visibilityCleanup();
-      (this as any)._visibilityCleanup = null;
+    if ((this as any)._cleanup) {
+      (this as any)._cleanup();
+      (this as any)._cleanup = null;
     }
     this.lastWrittenAt = '';
   }
-
 }
 
 export const cloudSync = new FirebaseSyncService();
