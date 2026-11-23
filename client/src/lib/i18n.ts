@@ -206,6 +206,8 @@ const uk = {
   'st.recoveryDesc':
     'Збережи цей ключ: він дозволяє відновити доступ на іншому пристрої або якщо браузер очистив дані (iOS Safari робить це через 7 днів неактивності).',
   'st.restoreOther': 'Увійти іншим ключем',
+  'st.deleteAccount': 'Видалити акаунт і мої дані',
+  'st.deleteAccountConfirm': 'Видалити ваш акаунт та всі особисті простори назавжди? Цю дію неможливо скасувати.',
   'st.telegramAcc': 'Вхід через Telegram: @{u}',
   'st.version': 'DuoDone v2',
   'st.history': 'Історія циклів',
@@ -457,6 +459,8 @@ const en: Dict = {
   'st.recoveryDesc':
     'Keep this key: it restores access on another device or if the browser wipes data (iOS Safari does this after 7 days of inactivity).',
   'st.restoreOther': 'Sign in with another key',
+  'st.deleteAccount': 'Delete account & my data',
+  'st.deleteAccountConfirm': 'Permanently delete your account and all solo spaces? This action cannot be undone.',
   'st.telegramAcc': 'Signed in via Telegram: @{u}',
   'st.version': 'DuoDone v2',
   'st.history': 'Cycle history',

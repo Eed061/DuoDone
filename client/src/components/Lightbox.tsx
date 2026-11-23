@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { resolveMediaUrl } from '../lib/api';
 
 /** Fullscreen photo viewer (1–2 photos). Tap outside / ✕ to close, arrows or swipe to switch. */
 export function Lightbox({ photos, index = 0, onClose }: { photos: string[]; index?: number; onClose: () => void }) {
@@ -39,7 +40,7 @@ export function Lightbox({ photos, index = 0, onClose }: { photos: string[]; ind
       </div>
       <div className="flex min-h-0 flex-1 items-center justify-center p-3">
         <img
-          src={photos[i]}
+          src={resolveMediaUrl(photos[i])}
           alt=""
           className="max-h-full max-w-full rounded-xl object-contain"
           onClick={(e) => e.stopPropagation()}
@@ -57,7 +58,7 @@ export function Lightbox({ photos, index = 0, onClose }: { photos: string[]; ind
               }}
               className={`h-14 w-14 overflow-hidden rounded-lg border-2 ${k === i ? 'border-white' : 'border-transparent opacity-60'}`}
             >
-              <img src={p} alt="" className="h-full w-full object-cover" />
+              <img src={resolveMediaUrl(p)} alt="" className="h-full w-full object-cover" />
             </button>
           ))}
         </div>
@@ -81,7 +82,7 @@ export function PhotoThumbs({ photos, onOpen, size = 56 }: { photos: string[]; o
           className="overflow-hidden rounded-xl border border-white/10 bg-slate-800"
           style={{ width: size, height: size }}
         >
-          <img src={p} alt="" loading="lazy" className="h-full w-full object-cover" />
+          <img src={resolveMediaUrl(p)} alt="" loading="lazy" className="h-full w-full object-cover" />
         </button>
       ))}
     </div>

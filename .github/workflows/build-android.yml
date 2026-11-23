@@ -1,0 +1,118 @@
+name: Build Mobile Apps (Google Play AAB/APK & App Store iOS)
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Google Play (Android AAB + APK)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Decode Keystore
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/duodone-release.keystore
+
+      - name: Bump versionCode
+        run: |
+          VERSION_CODE=$((100 + ${{ github.run_number }}))
+          sed -i "s/versionCode [0-9]*/versionCode $VERSION_CODE/" android/app/build.gradle
+          echo "versionCode set to $VERSION_CODE"
+
+      - name: Build Release AAB (Google Play) & APK
+        env:
+          KEYSTORE_PATH: "duodone-release.keystore"
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease assembleRelease
+
+      - name: Upload Google Play AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: duodone-google-play-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          retention-days: 30
+
+      - name: Upload Android APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: duodone-android-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          retention-days: 30
+
+  build-ios:
+    name: Apple App Store (iOS Xcode Archive)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Sync Capacitor iOS
+        run: npx cap sync ios
+
+      - name: Build iOS Archive (unsigned xcarchive for App Store Connect signing)
+        run: |
+          cd ios/App
+          xcodebuild -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath $RUNNER_TEMP/DuoDone.xcarchive \
+            archive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Upload iOS Archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: duodone-ios-xcarchive
+          path: ${{ runner.temp }}/DuoDone.xcarchive
+          retention-days: 30

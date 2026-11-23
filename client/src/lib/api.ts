@@ -1,6 +1,22 @@
 const TOKEN_KEY = 'dd_token';
 const SPACE_KEY = 'dd_space';
 
+const isNativeCapacitor =
+  typeof window !== 'undefined' &&
+  (window.location.protocol === 'capacitor:' ||
+    Boolean((window as any).Capacitor?.isNativePlatform?.()) ||
+    (window.location.hostname === 'localhost' && !window.location.port));
+
+export const API_ORIGIN: string = (
+  (import.meta as any).env?.VITE_API_ORIGIN || (isNativeCapacitor ? 'https://duo-done.vercel.app' : '')
+).replace(/\/+$/, '');
+
+export function resolveMediaUrl(url: string): string {
+  if (!url) return url;
+  if (url.startsWith('/') && API_ORIGIN) return `${API_ORIGIN}${url}`;
+  return url;
+}
+
 // Only the session token and active space ID are cached on the client. Everything else lives on the server.
 const mem: Record<string, string | null> = {};
 export const store = {
@@ -43,7 +59,7 @@ async function request<T>(method: string, path: string, body?: unknown, timeoutM
   let res: Response;
   try {
     const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
-    res = await fetch('/api' + path, {
+    res = await fetch(`${API_ORIGIN}/api${path}`, {
       method,
       headers: {
         ...(body && !isForm ? { 'Content-Type': 'application/json' } : {}),

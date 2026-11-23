@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../store';
-import { api } from '../lib/api';
+import { api, saveSpace, setToken } from '../lib/api';
 import { copyText, EMOJIS, fmtDate } from '../lib/utils';
 import { haptic, tgConfirm } from '../lib/tg';
 import type { Counter, Lang, PhotoMode, Role, SpaceState, SpaceSummary, Task, User } from '../types';
@@ -8,7 +8,7 @@ import { Avatar, Button, Card, Field, inputCls, Modal, SectionTitle, Segmented, 
 import { CreateSpaceModal, InviteBlock, JoinModal, ProfileModal } from '../components/SpaceModals';
 
 export function Settings() {
-  const { t, state, me, spaces, activeId, setActive, lang, run, applyState, setMeAndSpaces, toast, restore } = useApp();
+  const { t, state, me, spaces, activeId, setActive, lang, run, applyState, setMeAndSpaces, toast, restore, retryBoot } = useApp();
   const [spaceName, setSpaceName] = useState(state?.space.name || '');
   const [catName, setCatName] = useState(state?.space.catName || '');
   const [rewardText, setRewardText] = useState(state?.space.rewardText || '');
@@ -433,9 +433,25 @@ export function Settings() {
             </Button>
           </div>
         )}
-        <button onClick={() => setRestoreOpen(true)} className="text-xs font-semibold text-violet-300 underline">
-          {t('st.restoreOther')}
-        </button>
+        <div className="flex items-center justify-between border-t border-white/5 pt-2">
+          <button onClick={() => setRestoreOpen(true)} className="text-xs font-semibold text-violet-300 underline">
+            {t('st.restoreOther')}
+          </button>
+          <button
+            onClick={async () => {
+              if (!(await tgConfirm(t('st.deleteAccountConfirm')))) return;
+              const r = await run(() => api.del<{ ok: boolean }>('/me'));
+              if (r?.ok) {
+                setToken(null);
+                saveSpace(null);
+                retryBoot();
+              }
+            }}
+            className="text-xs font-semibold text-rose-400 underline"
+          >
+            {t('st.deleteAccount')}
+          </button>
+        </div>
       </Card>
 
       <div className="pt-4 text-center text-xs text-slate-600">{t('st.version')}</div>

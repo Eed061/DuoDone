@@ -270,6 +270,13 @@ function createSpace(user: Row, name: string) {
 // =====================================================================
 export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean; publicConfig: object }) {
   const r = express.Router();
+  r.use((req, res, next) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Setup-Secret');
+    if (req.method === 'OPTIONS') return res.status(204).end();
+    next();
+  });
   r.use(express.json({ limit: '200kb' }));
   r.use((_req, _res, next) => {
     ensureDbReady().then(() => next(), next);
@@ -406,6 +413,22 @@ export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean;
         run(`UPDATE users SET quickstart_dismissed = ? WHERE id = ?`, bool(req.body.quickstartDismissed), u.id);
       const nu = get(`SELECT * FROM users WHERE id = ?`, u.id)!;
       res.json({ user: mapUser(nu), spaces: spaceList(u.id) });
+    }),
+  );
+
+  r.delete(
+    '/me',
+    h((req, res) => {
+      const u = req.user!;
+      tx(() => {
+        // Delete solo spaces where no partner is linked; unlink from shared spaces
+        run(`DELETE FROM spaces WHERE p1_user_id = ? AND p2_user_id IS NULL`, u.id);
+        run(`DELETE FROM spaces WHERE p2_user_id = ? AND p1_user_id IS NULL`, u.id);
+        run(`UPDATE spaces SET p1_user_id = NULL WHERE p1_user_id = ?`, u.id);
+        run(`UPDATE spaces SET p2_user_id = NULL WHERE p2_user_id = ?`, u.id);
+        run(`DELETE FROM users WHERE id = ?`, u.id);
+      });
+      res.json({ ok: true });
     }),
   );
 

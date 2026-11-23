@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { resolveMediaUrl } from '../lib/api';
 import { isUrlAvatar } from '../lib/utils';
 
 export function Modal({
@@ -166,7 +167,7 @@ export function Avatar({ value, size = 36, ring }: { value: string; size?: numbe
       className={`inline-grid shrink-0 place-items-center overflow-hidden rounded-full bg-slate-800 ${ring ? `ring-2 ${ring}` : ''}`}
       style={style}
     >
-      {isUrlAvatar(value) ? <img src={value} alt="" className="h-full w-full object-cover" draggable={false} /> : <span>{value}</span>}
+      {isUrlAvatar(value) ? <img src={resolveMediaUrl(value)} alt="" className="h-full w-full object-cover" draggable={false} /> : <span>{value}</span>}
     </span>
   );
 }
