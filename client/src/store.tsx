@@ -106,6 +106,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const applyState = useCallback((s: SpaceState) => {
     if (s.space.id === activeRef.current) setState(s);
+    const hasPartner = s.space.p1.linked && s.space.p2.linked;
+    setSpaces((prev) => {
+      let changed = false;
+      const next = prev.map((sp) => {
+        if (sp.id !== s.space.id) return sp;
+        if (
+          sp.name === s.space.name &&
+          sp.p1Name === s.space.p1.name &&
+          sp.p2Name === s.space.p2.name &&
+          sp.p1Avatar === s.space.p1.avatar &&
+          sp.p2Avatar === s.space.p2.avatar &&
+          sp.hasPartner === hasPartner
+        ) {
+          return sp;
+        }
+        changed = true;
+        return {
+          ...sp,
+          name: s.space.name,
+          p1Name: s.space.p1.name,
+          p2Name: s.space.p2.name,
+          p1Avatar: s.space.p1.avatar,
+          p2Avatar: s.space.p2.avatar,
+          hasPartner,
+        };
+      });
+      return changed ? next : prev;
+    });
   }, []);
 
   const refreshState = useCallback(async () => {
@@ -114,7 +142,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const seq = ++reqSeq.current;
     try {
       const s = await api.get<SpaceState>(`/spaces/${id}/state`);
-      if (seq === reqSeq.current && id === activeRef.current) setState(s);
+      if (seq === reqSeq.current && id === activeRef.current) applyState(s);
     } catch (e) {
       if (e instanceof ApiError && (e.status === 403 || e.status === 404)) {
         // space was deleted or we were unlinked → fall back to another space
@@ -126,7 +154,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       }
     }
-  }, [setActive]);
+  }, [applyState, setActive]);
 
   const setMeAndSpaces = useCallback(
     (r: { user?: User; spaces: SpaceSummary[] }) => {
@@ -282,6 +310,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [booted, activeId, refreshState]);
 
   // ---------------- realtime ----------------
+  const wsEnabled = config?.wsEnabled !== false;
   useEffect(() => {
     if (!booted) return;
     let ws: WebSocket | null = null;
@@ -291,6 +320,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let ping: ReturnType<typeof setInterval> | null = null;
 
     const connect = () => {
+      if (!wsEnabled) return;
       const token = getToken();
       if (!token || closed) return;
       try {
@@ -339,7 +369,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (document.visibilityState === 'visible') {
         refreshState();
         refreshMe();
-        if (!ws || ws.readyState > 1) {
+        if (wsEnabled && (!ws || ws.readyState > 1)) {
           retry = 0;
           connect();
         }
@@ -351,14 +381,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     const onOffline = () => setOnline(false);
 
-    connect();
+    if (wsEnabled) connect();
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('pageshow', onVisible);
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
     // fallback polling when the socket is down (e.g. serverless or corporate proxies)
     const poll = setInterval(() => {
-      if (document.visibilityState === 'visible' && (!ws || ws.readyState !== 1)) refreshState();
+      if (document.visibilityState === 'visible' && (!wsEnabled || !ws || ws.readyState !== 1)) refreshState();
     }, 4500);
 
     return () => {
@@ -374,7 +404,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ws?.close();
       } catch {}
     };
-  }, [booted, bootNonce, refreshMe, refreshState]);
+  }, [booted, bootNonce, wsEnabled, refreshMe, refreshState]);
 
   const nameOf = useCallback((r: Role) => (state ? state.space[r].name : r), [state]);
 

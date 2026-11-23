@@ -11,14 +11,21 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', true);
 
+const SKIP_DB_PATHS = new Set(['/api/health', '/api/config', '/api/bot']);
+
 app.use(async (req, res, next) => {
+  if (req.path.startsWith('/uploads/') || SKIP_DB_PATHS.has(req.path)) {
+    return next();
+  }
+  const isMutating = req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS';
+  const forceRefresh = isMutating && req.path !== '/api/upload';
   try {
     await ensureDbReady();
-    await refreshDbFromCloudIfNeeded();
+    await refreshDbFromCloudIfNeeded(forceRefresh);
   } catch (e) {
     console.error('DB init error:', e);
   }
-  if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
+  if (isMutating) {
     const origJson = res.json.bind(res);
     res.json = ((body: any) => {
       flushDbSyncNow()
@@ -40,6 +47,7 @@ app.use(
       appShortName: process.env.TG_APP_SHORT_NAME || '',
       publicUrl: (process.env.PUBLIC_URL || 'https://duo-done.vercel.app').replace(/\/+$/, ''),
       telegramAuth: !!BOT_TOKEN || ALLOW_INSECURE_TG,
+      wsEnabled: false,
     },
   }),
 );

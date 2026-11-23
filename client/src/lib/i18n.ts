@@ -139,6 +139,7 @@ const uk = {
   'cal.allPeriod': 'Весь місяць',
   'cal.noEvents': 'Немає подій за цей період',
   'cal.events': 'Події',
+  'cal.showMore': 'Показати ще (+{n})',
 
   // roulette
   'rl.rewards': 'Нагороди',
@@ -391,6 +392,7 @@ const en: Dict = {
   'cal.allPeriod': 'Whole month',
   'cal.noEvents': 'No events for this period',
   'cal.events': 'Events',
+  'cal.showMore': 'Show more (+{n})',
 
   'rl.rewards': 'Rewards',
   'rl.penalties': 'Dares',

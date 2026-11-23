@@ -289,6 +289,9 @@ export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean;
     '/setup-bot',
     h(async (req, res) => {
       if (!config.botToken) return res.status(400).json({ error: 'no_bot_token' });
+      const expected = process.env.SETUP_SECRET || crypto.createHash('sha256').update(config.botToken).digest('hex').slice(0, 16);
+      const provided = String(req.headers['x-setup-secret'] || req.query.secret || '');
+      if (provided !== expected) return res.status(403).json({ error: 'forbidden' });
       const pubUrl = (config.publicConfig as any)?.publicUrl || `${req.protocol}://${req.get('host')}`;
       const hookRes = await fetch(`https://api.telegram.org/bot${config.botToken}/setWebhook`, {
         method: 'POST',

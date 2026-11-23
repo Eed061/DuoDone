@@ -120,4 +120,5 @@ export interface PublicConfig {
   appShortName: string;
   publicUrl: string;
   telegramAuth: boolean;
+  wsEnabled?: boolean;
 }

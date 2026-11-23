@@ -259,19 +259,23 @@ export const uid = (bytes = 12) => crypto.randomBytes(bytes).toString('base64url
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
 let syncing = false;
 let syncPending = false;
+let dbDirty = false;
 let inTx = 0;
 
 async function flushDbSnapshot() {
-  if (!cloudSyncEnabled || !adapter) return;
+  if (!cloudSyncEnabled || !adapter || !dbDirty) return;
   if (syncing) {
     syncPending = true;
     return;
   }
   syncing = true;
+  dbDirty = false;
   try {
     const buf = await adapter.exportBytes();
-    await ghPutFile('db/duodone.db', buf, 'sync db snapshot');
+    const ok = await ghPutFile('db/duodone.db', buf, 'sync db snapshot');
+    if (!ok) dbDirty = true;
   } catch (e) {
+    dbDirty = true;
     console.error('[cloudSync] snapshot failed:', e);
   } finally {
     syncing = false;
@@ -283,6 +287,7 @@ async function flushDbSnapshot() {
 }
 
 export function scheduleDbSync() {
+  dbDirty = true;
   if (!cloudSyncEnabled) return;
   if (syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(() => {
@@ -292,7 +297,7 @@ export function scheduleDbSync() {
 }
 
 export async function flushDbSyncNow() {
-  if (!cloudSyncEnabled) return;
+  if (!cloudSyncEnabled || !dbDirty) return;
   if (syncTimer) {
     clearTimeout(syncTimer);
     syncTimer = null;
@@ -300,10 +305,10 @@ export async function flushDbSyncNow() {
   await flushDbSnapshot();
 }
 
-export async function refreshDbFromCloudIfNeeded() {
+export async function refreshDbFromCloudIfNeeded(force = false) {
   await ensureDbReady();
   if (!cloudSyncEnabled || syncTimer || syncing) return;
-  const remoteTs = await fbGetRemoteUpdatedAt('db/duodone.db');
+  const remoteTs = await fbGetRemoteUpdatedAt('db/duodone.db', force);
   if (remoteTs > localDbUpdatedAt) {
     adapter?.close();
     for (const suffix of ['', '-wal', '-shm']) {

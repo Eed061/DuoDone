@@ -32,6 +32,7 @@ app.use(
       appShortName: process.env.TG_APP_SHORT_NAME || '',
       publicUrl: (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, ''),
       telegramAuth: !!BOT_TOKEN || ALLOW_INSECURE_TG,
+      wsEnabled: true,
     },
   }),
 );

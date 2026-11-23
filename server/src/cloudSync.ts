@@ -20,11 +20,19 @@ export const ghSyncEnabled = Boolean(GH_REPO && GH_TOKEN);
 export const cloudSyncEnabled = firebaseEnabled || ghSyncEnabled;
 
 export let localDbUpdatedAt = 0;
+let lastCheckedAt = 0;
+let lastRemoteEtag = '';
 
 const fbKey = (remotePath: string) => remotePath.replace(/[^A-Za-z0-9_\-/]/g, '_').replace(/\./g, '_dot_');
 
-export async function fbGetRemoteUpdatedAt(remotePath: string): Promise<number> {
+export async function fbGetRemoteUpdatedAt(remotePath: string, force = false): Promise<number> {
   if (!firebaseEnabled) return 0;
+  const now = Date.now();
+  // TTL cache (2.5s) on read-only polls so burst GET requests don't hit Firebase repeatedly
+  if (!force && now - lastCheckedAt < 2500) {
+    return localDbUpdatedAt;
+  }
+  lastCheckedAt = now;
   try {
     const res = await fetch(`${FIREBASE_DB_URL}/v2_storage/${fbKey(remotePath)}/updatedAt.json`);
     if (!res.ok) return 0;
@@ -38,10 +46,14 @@ export async function fbGetRemoteUpdatedAt(remotePath: string): Promise<number> 
 async function fbGetFile(remotePath: string): Promise<{ buf: Buffer; updatedAt: number } | null> {
   if (!firebaseEnabled) return null;
   try {
-    const res = await fetch(`${FIREBASE_DB_URL}/v2_storage/${fbKey(remotePath)}.json`);
+    const res = await fetch(`${FIREBASE_DB_URL}/v2_storage/${fbKey(remotePath)}.json`, {
+      headers: { 'X-Firebase-ETag': 'true' },
+    });
     if (!res.ok) return null;
+    const etag = res.headers.get('etag') || '';
     const data: any = await res.json();
     if (!data?.b64) return null;
+    if (remotePath === 'db/duodone.db' && etag) lastRemoteEtag = etag;
     return { buf: Buffer.from(data.b64, 'base64'), updatedAt: Number(data.updatedAt || Date.now()) };
   } catch {
     return null;
@@ -52,12 +64,31 @@ async function fbPutFile(remotePath: string, buf: Buffer): Promise<number> {
   if (!firebaseEnabled) return 0;
   try {
     const now = Date.now();
-    const res = await fetch(`${FIREBASE_DB_URL}/v2_storage/${fbKey(remotePath)}.json`, {
+    const isDb = remotePath === 'db/duodone.db';
+    const reqHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'X-Firebase-ETag': 'true',
+    };
+    if (isDb && lastRemoteEtag && lastRemoteEtag !== 'null_etag') {
+      reqHeaders['if-match'] = lastRemoteEtag;
+    }
+    let res = await fetch(`${FIREBASE_DB_URL}/v2_storage/${fbKey(remotePath)}.json`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: reqHeaders,
       body: JSON.stringify({ b64: buf.toString('base64'), updatedAt: now }),
     });
-    return res.ok ? now : 0;
+    if (res.status === 412) {
+      res = await fetch(`${FIREBASE_DB_URL}/v2_storage/${fbKey(remotePath)}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Firebase-ETag': 'true' },
+        body: JSON.stringify({ b64: buf.toString('base64'), updatedAt: now }),
+      });
+    }
+    if (!res.ok) return 0;
+    const newEtag = res.headers.get('etag') || '';
+    if (isDb && newEtag) lastRemoteEtag = newEtag;
+    lastCheckedAt = Date.now();
+    return now;
   } catch {
     return 0;
   }
@@ -74,7 +105,10 @@ const shaCache = new Map<string, string>();
 export async function ghGetFile(remotePath: string): Promise<Buffer | null> {
   const fb = await fbGetFile(remotePath);
   if (fb) {
-    if (remotePath === 'db/duodone.db') localDbUpdatedAt = fb.updatedAt;
+    if (remotePath === 'db/duodone.db') {
+      localDbUpdatedAt = fb.updatedAt;
+      lastCheckedAt = Date.now();
+    }
     return fb.buf;
   }
   if (!ghSyncEnabled) return null;

@@ -19,6 +19,7 @@ export function CalendarView() {
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [limit, setLimit] = useState(30);
   const [logs, setLogs] = useState<LogEntry[] | null>(null);
   const [lightbox, setLightbox] = useState<{ photos: string[]; i: number } | null>(null);
 
@@ -68,6 +69,7 @@ export function CalendarView() {
   const shiftMonth = (delta: number) => {
     haptic('select');
     setSelectedDay(null);
+    setLimit(30);
     setCursor(new Date(year, month + delta, 1));
   };
 
@@ -114,6 +116,7 @@ export function CalendarView() {
                 key={k}
                 onClick={() => {
                   haptic('select');
+                  setLimit(30);
                   setSelectedDay(sel ? null : k);
                 }}
                 className={`relative flex h-11 flex-col items-center justify-center rounded-2xl text-sm font-semibold transition ${
@@ -180,7 +183,7 @@ export function CalendarView() {
         <Card className="py-8 text-center text-sm text-slate-500">{t('cal.noEvents')}</Card>
       ) : (
         <div className="space-y-2">
-          {visibleLogs.map((l) => (
+          {visibleLogs.slice(0, limit).map((l) => (
             <Card key={l.id} className="!p-3">
               <div className="flex items-center gap-3">
                 <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-slate-800 text-2xl">{l.emoji}</div>
@@ -211,6 +214,14 @@ export function CalendarView() {
               )}
             </Card>
           ))}
+          {visibleLogs.length > limit && (
+            <button
+              onClick={() => setLimit((n) => n + 30)}
+              className="w-full rounded-2xl bg-white/5 py-2.5 text-sm font-semibold text-slate-300 active:scale-[0.99]"
+            >
+              {t('cal.showMore', { n: visibleLogs.length - limit })}
+            </button>
+          )}
         </div>
       )}
 
