@@ -340,10 +340,52 @@ export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean;
         const startParam = parts.length > 1 ? parts[1] : '';
         const isInvite = /^(join_|accept_|DUO-)/i.test(startParam);
         const pubUrl = (config.publicConfig as any)?.publicUrl || `${req.protocol}://${req.get('host')}`;
-        const appUrl = isInvite ? `${pubUrl}/?join=${encodeURIComponent(startParam.replace(/^(join_|accept_)/i, ''))}` : pubUrl;
-        const welcome = isInvite
-          ? `🤝 <b>Запрошення отримано!</b>\n\nВітаємо у спільному просторі DuoDone! 🎉\nТисни кнопку нижче, щоб приєднатися до простору партнера 🚀`
-          : `🏓 Привіт, ${firstName}! Вітаємо у DuoDone — офіційній зоні побутового миру та справедливості! 🤝\n\n• 🏓 <b>Симетричний Пінг-понг</b>: помив посуд ➔ тапнув ➔ хід перелетів до партнера.\n• ⚖️ <b>XP Балансир</b>: заробляй бали за справи та перетягуй канат на свій бік.\n• 🎡 <b>Рулетка Долі</b>: розіграш призів та завдань наприкінці циклу.\n\nТисни кнопку нижче! 🚀`;
+        const rawCode = isInvite ? normalizeCode(startParam) : '';
+        const appUrl = isInvite ? `${pubUrl}/?join=${encodeURIComponent(rawCode)}` : pubUrl;
+
+        let joinedSpaceName: string | null = null;
+        let spaceFullName: string | null = null;
+        if (isInvite && rawCode && msg.from?.id) {
+          try {
+            const tgUser = upsertTelegramUser(msg.from);
+            tx(() => {
+              const space = get(`SELECT * FROM spaces WHERE invite_code = ?`, rawCode);
+              if (!space) return;
+              if (space.p1_user_id === tgUser.id || space.p2_user_id === tgUser.id) {
+                joinedSpaceName = space.name;
+                return;
+              }
+              let slot: Role | null = null;
+              if (!space.p2_user_id) slot = 'p2';
+              else if (!space.p1_user_id) slot = 'p1';
+              if (!slot) {
+                spaceFullName = space.name;
+                return;
+              }
+              const nameCol = `${slot}_name`;
+              const newName =
+                isTemplateName(space[nameCol]) && tgUser.first_name ? String(tgUser.first_name).slice(0, 40) : space[nameCol];
+              run(
+                `UPDATE spaces SET ${slot}_user_id = ?, ${nameCol} = ? WHERE id = ? AND ${slot}_user_id IS NULL`,
+                tgUser.id,
+                newName,
+                space.id,
+              );
+              run(`DELETE FROM prefs WHERE space_id = ? AND acting_role = ?`, space.id, slot);
+              joinedSpaceName = space.name;
+            });
+          } catch (e) {
+            console.error('Bot auto-join error:', e);
+          }
+        }
+
+        const welcome = joinedSpaceName
+          ? `🤝 <b>Ви успішно приєдналися до простору «${joinedSpaceName}»!</b> 🎉\n\nТисни кнопку нижче, щоб відкрити ваш спільний простір у DuoDone 🚀`
+          : spaceFullName
+            ? `⚠️ <b>Простір «${spaceFullName}» вже заповнений</b> (у ньому вже є 2 партнери).\n\nЯкщо це ваш простір — попросіть партнера натиснути «Відв’язати партнера» в Налаштуваннях і перейти за посиланням знову.`
+            : isInvite
+              ? `🤝 <b>Запрошення отримано!</b>\n\nВітаємо у спільному просторі DuoDone! 🎉\nТисни кнопку нижче, щоб приєднатися до простору партнера 🚀`
+              : `🏓 Привіт, ${firstName}! Вітаємо у DuoDone — офіційній зоні побутового миру та справедливості! 🤝\n\n• 🏓 <b>Симетричний Пінг-понг</b>: помив посуд ➔ тапнув ➔ хід перелетів до партнера.\n• ⚖️ <b>XP Балансир</b>: заробляй бали за справи та перетягуй канат на свій бік.\n• 🎡 <b>Рулетка Долі</b>: розіграш призів та завдань наприкінці циклу.\n\nТисни кнопку нижче! 🚀`;
         await fetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -352,7 +394,18 @@ export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean;
             text: welcome,
             parse_mode: 'HTML',
             reply_markup: {
-              inline_keyboard: [[{ text: isInvite ? '✅ Приєднатися до простору 🚀' : '🏓 Відкрити DuoDone 🚀', web_app: { url: appUrl } }]],
+              inline_keyboard: [
+                [
+                  {
+                    text: joinedSpaceName
+                      ? `✅ Відкрити «${joinedSpaceName}» 🚀`
+                      : isInvite
+                        ? '✅ Приєднатися до простору 🚀'
+                        : '🏓 Відкрити DuoDone 🚀',
+                    web_app: { url: appUrl },
+                  },
+                ],
+              ],
             },
           }),
         }).catch(() => {});

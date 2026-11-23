@@ -12,7 +12,7 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', true);
 
-const SKIP_DB_PATHS = new Set(['/api/health', '/api/config', '/api/bot']);
+const SKIP_DB_PATHS = new Set(['/api/health', '/api/config']);
 
 app.use(async (req, res, next) => {
   if (req.path.startsWith('/uploads/') || SKIP_DB_PATHS.has(req.path)) {

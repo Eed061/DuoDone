@@ -95,9 +95,7 @@ export function inviteLinks(code: string, cfg: PublicConfig | null) {
   const web = `${origin}/?join=${encodeURIComponent(code)}`;
   let tgLink: string | null = null;
   if (cfg?.botUsername) {
-    tgLink = cfg.appShortName
-      ? `https://t.me/${cfg.botUsername}/${cfg.appShortName}?startapp=join_${code}`
-      : `https://t.me/${cfg.botUsername}?startapp=join_${code}`;
+    tgLink = `https://t.me/${cfg.botUsername}?start=join_${code}`;
   }
   return { web, tg: tgLink, primary: tgLink || web };
 }
