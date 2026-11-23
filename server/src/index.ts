@@ -12,10 +12,10 @@ try {
 const { apiRouter } = await import('./routes.js');
 const { attachRealtime } = await import('./realtime.js');
 const { UPLOAD_DIR, ensureLocalUpload, storageDriver } = await import('./storage.js');
+const { resolveBotToken } = await import('./cloudSync.js');
 
 const PORT = Number(process.env.PORT || 3001);
-const BOT_TOKEN =
-  process.env.BOT_TOKEN || Buffer.from('ODYxMDEyMzM4OTpBQUVCX2ZodXJmeHBTSlp4UXRjZWx0dTdlejRXaE1NWWpBbw==', 'base64').toString('utf8');
+const BOT_TOKEN = process.env.BOT_TOKEN || (await resolveBotToken());
 const BOT_USERNAME = process.env.BOT_USERNAME || 'DuoDone_bot';
 const ALLOW_INSECURE_TG = process.env.ALLOW_INSECURE_TG === '1';
 

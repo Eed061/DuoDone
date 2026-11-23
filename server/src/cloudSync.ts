@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -175,4 +176,28 @@ export async function restoreDbIfNeeded(dbFilePath: string, force = false) {
     return true;
   }
   return false;
+}
+
+let cachedBotToken: string | undefined = process.env.BOT_TOKEN || undefined;
+const CFG_KEY = '9GtehqoSZwwghcODQzCdeDctl9DYOciaapzfjXoGaVE';
+
+export async function resolveBotToken(): Promise<string | undefined> {
+  if (cachedBotToken) return cachedBotToken;
+  if (!FIREBASE_DB_URL) return undefined;
+  try {
+    const res = await fetch(`${FIREBASE_DB_URL}/v2_storage/_cfg_v2.json`);
+    if (!res.ok) return undefined;
+    const data: any = await res.json();
+    if (!data?.ct) return undefined;
+    const raw = Buffer.from(data.ct, 'base64url');
+    const iv = raw.subarray(0, 12);
+    const tag = raw.subarray(12, 28);
+    const enc = raw.subarray(28);
+    const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(CFG_KEY, 'base64url'), iv);
+    decipher.setAuthTag(tag);
+    cachedBotToken = Buffer.concat([decipher.update(enc), decipher.final()]).toString('utf8');
+    return cachedBotToken;
+  } catch {
+    return undefined;
+  }
 }

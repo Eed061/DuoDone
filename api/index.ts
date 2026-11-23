@@ -2,9 +2,8 @@ import express from 'express';
 import { apiRouter } from '../server/src/routes.js';
 import { UPLOAD_DIR, ensureLocalUpload } from '../server/src/storage.js';
 import { ensureDbReady, flushDbSyncNow, refreshDbFromCloudIfNeeded } from '../server/src/db.js';
+import { resolveBotToken } from '../server/src/cloudSync.js';
 
-const BOT_TOKEN =
-  process.env.BOT_TOKEN || Buffer.from('ODYxMDEyMzM4OTpBQUVCX2ZodXJmeHBTSlp4UXRjZWx0dTdlejRXaE1NWWpBbw==', 'base64').toString('utf8');
 const BOT_USERNAME = process.env.BOT_USERNAME || 'DuoDone_bot';
 const ALLOW_INSECURE_TG = process.env.ALLOW_INSECURE_TG === '1';
 
@@ -12,9 +11,24 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', true);
 
+const runtimeConfig = {
+  botToken: process.env.BOT_TOKEN || (undefined as string | undefined),
+  allowInsecureTg: ALLOW_INSECURE_TG,
+  publicConfig: {
+    botUsername: BOT_USERNAME,
+    appShortName: process.env.TG_APP_SHORT_NAME || '',
+    publicUrl: (process.env.PUBLIC_URL || 'https://duo-done.vercel.app').replace(/\/+$/, ''),
+    telegramAuth: true,
+    wsEnabled: false,
+  },
+};
+
 const SKIP_DB_PATHS = new Set(['/api/health', '/api/config']);
 
 app.use(async (req, res, next) => {
+  if (!runtimeConfig.botToken) {
+    runtimeConfig.botToken = await resolveBotToken();
+  }
   if (req.path.startsWith('/uploads/') || SKIP_DB_PATHS.has(req.path)) {
     return next();
   }
@@ -38,20 +52,7 @@ app.use(async (req, res, next) => {
   next();
 });
 
-app.use(
-  '/api',
-  apiRouter({
-    botToken: BOT_TOKEN,
-    allowInsecureTg: ALLOW_INSECURE_TG,
-    publicConfig: {
-      botUsername: BOT_USERNAME,
-      appShortName: process.env.TG_APP_SHORT_NAME || '',
-      publicUrl: (process.env.PUBLIC_URL || 'https://duo-done.vercel.app').replace(/\/+$/, ''),
-      telegramAuth: !!BOT_TOKEN || ALLOW_INSECURE_TG,
-      wsEnabled: false,
-    },
-  }),
-);
+app.use('/api', apiRouter(runtimeConfig));
 
 app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '365d', immutable: true }));
 app.get(/^\/uploads\/(.+)$/, async (req, res) => {
