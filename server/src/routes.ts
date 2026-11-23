@@ -150,6 +150,7 @@ const mapLog = (l: Row) => ({
   amount: l.amount,
   photos: JSON.parse(l.photos || '[]') as string[],
   outOfTurn: !!l.out_of_turn,
+  deleteRequestedBy: (l.delete_requested_by as Role | null) ?? null,
   createdAt: l.created_at,
 });
 
@@ -220,6 +221,7 @@ function buildState(spaceId: string, userId: string) {
       inviteCode: space.invite_code,
       mode: space.mode,
       showBalancer: !!space.show_balancer,
+      showCounters: space.show_counters === undefined ? true : !!space.show_counters,
       cyclePeriod: space.cycle_period,
       cycleDays: space.cycle_days,
       rewardType: space.reward_type,
@@ -511,6 +513,7 @@ export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean;
       if (has(b, 'name')) set('name', str(b.name, 60));
       if (has(b, 'mode')) set('mode', b.mode === 'balancer' ? 'balancer' : 'symmetric');
       if (has(b, 'showBalancer')) set('show_balancer', bool(b.showBalancer));
+      if (has(b, 'showCounters')) set('show_counters', bool(b.showCounters));
       if (has(b, 'cyclePeriod'))
         set('cycle_period', ['weekly', 'monthly', 'custom', 'off'].includes(b.cyclePeriod) ? b.cyclePeriod : 'weekly');
       if (has(b, 'cycleDays')) set('cycle_days', int(b.cycleDays, 1, 365, 7));
@@ -660,11 +663,27 @@ export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean;
   r.delete(
     '/spaces/:id/logs/:logId',
     h((req, res) => {
-      const { space } = membership(String(req.params.id), req.user!.id);
+      const { space, role } = membership(String(req.params.id), req.user!.id);
+      const acting = actingRoleFor(space, req.user!.id, role);
       const log = get(`SELECT * FROM logs WHERE id = ? AND space_id = ?`, String(req.params.logId), space.id);
       if (!log) fail(404, 'not_found');
+      const cancel = req.query.cancel === '1';
+
+      let deleteStatus: 'requested' | 'cancelled' | 'deleted' = 'requested';
       tx(() => {
+        if (cancel || log!.delete_requested_by === acting) {
+          run(`UPDATE logs SET delete_requested_by = NULL WHERE id = ?`, log!.id);
+          deleteStatus = 'cancelled';
+          return;
+        }
+        if (!log!.delete_requested_by) {
+          run(`UPDATE logs SET delete_requested_by = ? WHERE id = ?`, acting, log!.id);
+          deleteStatus = 'requested';
+          return;
+        }
+        // Second partner confirmed deletion (log.delete_requested_by !== acting)
         run(`DELETE FROM logs WHERE id = ?`, log!.id);
+        deleteStatus = 'deleted';
         if (log!.kind === 'task') {
           const task = get(`SELECT * FROM tasks WHERE id = ?`, log!.item_id);
           if (task && task.last_done_at === log!.created_at) {
@@ -680,7 +699,7 @@ export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean;
         }
       });
       notifySpace(space.id);
-      res.json(buildState(space.id, req.user!.id));
+      res.json({ ...buildState(space.id, req.user!.id), deleteStatus });
     }),
   );
 

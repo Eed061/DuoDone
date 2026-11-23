@@ -13,7 +13,7 @@ const dayKey = (ts: number) => {
 };
 
 export function CalendarView() {
-  const { t, state, lang, nameOf, run, applyState } = useApp();
+  const { t, state, lang, nameOf, run, applyState, toast } = useApp();
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -24,7 +24,7 @@ export function CalendarView() {
   const [lightbox, setLightbox] = useState<{ photos: string[]; i: number } | null>(null);
 
   const spaceId = state?.space.id;
-  const logsHead = state?.logs[0]?.id;
+  const logsSyncKey = state ? `${state.logs.length}:${state.logs[0]?.id || ''}:${state.logs.filter((x) => x.deleteRequestedBy).map((x) => `${x.id}_${x.deleteRequestedBy}`).join(',')}` : '';
   const prevViewKey = useRef('');
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export function CalendarView() {
     return () => {
       cancelled = true;
     };
-  }, [spaceId, cursor, logsHead]);
+  }, [spaceId, cursor, logsSyncKey]);
 
   const byDay = useMemo(() => {
     const m = new Map<string, { p1: number; p2: number; photos: number; logs: LogEntry[] }>();
@@ -77,12 +77,28 @@ export function CalendarView() {
     setCursor(new Date(year, month + delta, 1));
   };
 
-  const undo = async (log: LogEntry) => {
-    if (!(await tgConfirm(t('td.undoConfirm')))) return;
-    const s = await run(() => api.del<SpaceState>(`/spaces/${state.space.id}/logs/${log.id}`));
-    if (s) {
-      applyState(s);
+  const handleDeleteAction = async (log: LogEntry, cancel = false) => {
+    if (!cancel && !log.deleteRequestedBy) {
+      if (!(await tgConfirm(t('td.undoConfirm')))) return;
+    } else if (!cancel && log.deleteRequestedBy && log.deleteRequestedBy !== state.actingRole) {
+      if (!(await tgConfirm(t('td.confirmDeletePrompt')))) return;
+    }
+    const r = await run(() =>
+      api.del<SpaceState & { deleteStatus?: 'requested' | 'cancelled' | 'deleted' }>(
+        `/spaces/${state.space.id}/logs/${log.id}${cancel ? '?cancel=1' : ''}`,
+      ),
+    );
+    if (!r) return;
+    applyState(r);
+    if (r.deleteStatus === 'deleted') {
       setLogs((ls) => ls?.filter((l) => l.id !== log.id) ?? null);
+      toast(t('td.deletedToast'), 'ok');
+    } else if (r.deleteStatus === 'cancelled') {
+      setLogs((ls) => ls?.map((l) => (l.id === log.id ? { ...l, deleteRequestedBy: null } : l)) ?? null);
+      toast(t('td.deleteCancelledToast'), 'info');
+    } else {
+      setLogs((ls) => ls?.map((l) => (l.id === log.id ? { ...l, deleteRequestedBy: state.actingRole } : l)) ?? null);
+      toast(t('td.deleteRequestedToast'), 'info');
     }
   };
 
@@ -207,13 +223,58 @@ export function CalendarView() {
                   </div>
                 </div>
                 {l.xp > 0 && <span className="rounded-full bg-amber-400/15 px-2.5 py-1 text-xs font-bold text-amber-300">+{l.xp} XP</span>}
-                <button onClick={() => undo(l)} className="rounded-lg px-1.5 py-1 text-xs text-slate-500 active:bg-white/5" title={t('td.undo')}>
-                  ↶
-                </button>
+                {!l.deleteRequestedBy && (
+                  <button
+                    onClick={() => handleDeleteAction(l, false)}
+                    className="rounded-lg px-2 py-1 text-xs text-slate-400 active:bg-white/5"
+                    title={t('td.undo')}
+                  >
+                    🗑️
+                  </button>
+                )}
               </div>
               {l.photos.length > 0 && (
                 <div className="mt-2.5 pl-14">
                   <PhotoThumbs photos={l.photos} size={76} onOpen={(i) => setLightbox({ photos: l.photos, i })} />
+                </div>
+              )}
+              {l.deleteRequestedBy && (
+                <div
+                  className={`mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2 text-xs ${
+                    l.deleteRequestedBy === state.actingRole
+                      ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
+                      : 'border-rose-400/30 bg-rose-500/15 text-rose-100'
+                  }`}
+                >
+                  {l.deleteRequestedBy === state.actingRole ? (
+                    <>
+                      <span>⏳ {t('td.waitPartner', { name: nameOf(state.actingRole === 'p1' ? 'p2' : 'p1') })}</span>
+                      <button
+                        onClick={() => handleDeleteAction(l, true)}
+                        className="rounded-xl bg-white/10 px-2.5 py-1 font-semibold text-white active:scale-95"
+                      >
+                        ✕ {t('td.cancelDeleteBtn')}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-semibold">⚠️ {t('td.partnerWantsDelete', { name: nameOf(l.deleteRequestedBy) })}</span>
+                      <span className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleDeleteAction(l, true)}
+                          className="rounded-xl bg-white/10 px-2.5 py-1 font-semibold text-slate-200 active:scale-95"
+                        >
+                          ✕ {t('common.no')}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAction(l, false)}
+                          className="rounded-xl bg-rose-500 px-2.5 py-1 font-bold text-white shadow active:scale-95"
+                        >
+                          ✓ {t('td.confirmDeleteBtn')}
+                        </button>
+                      </span>
+                    </>
+                  )}
                 </div>
               )}
             </Card>

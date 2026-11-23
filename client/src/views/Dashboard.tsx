@@ -25,11 +25,13 @@ export function Dashboard() {
       <CycleBanner state={state} />
       {state.space.showBalancer && <XpBalancerCard state={state} />}
       <PingPongCard state={state} onDo={(t) => setCompleting({ kind: 'task', item: t })} onOpen={(t) => setDetail({ kind: 'task', item: t })} />
-      <CountersSection
-        state={state}
-        onDo={(c) => setCompleting({ kind: 'counter', item: c })}
-        onOpen={(c) => setDetail({ kind: 'counter', item: c })}
-      />
+      {state.space.showCounters !== false && (
+        <CountersSection
+          state={state}
+          onDo={(c) => setCompleting({ kind: 'counter', item: c })}
+          onOpen={(c) => setDetail({ kind: 'counter', item: c })}
+        />
+      )}
       <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
       <CompleteModal target={completing} onClose={() => setCompleting(null)} />
       <ItemDetailModal target={detail} onClose={() => setDetail(null)} />
@@ -450,12 +452,12 @@ function CompleteModal({
 
 // ---------------------------------------------------------------------------
 function ItemDetailModal({ target, onClose }: { target: { kind: 'task' | 'counter'; item: Task | Counter } | null; onClose: () => void }) {
-  const { t, state, lang, run, applyState, nameOf } = useApp();
+  const { t, state, lang, run, applyState, nameOf, toast } = useApp();
   const [logs, setLogs] = useState<LogEntry[] | null>(null);
   const [lightbox, setLightbox] = useState<{ photos: string[]; i: number } | null>(null);
   const spaceId = state?.space.id;
   const itemId = target?.item.id;
-  const logsVersion = state?.logs[0]?.id;
+  const logsVersion = state ? `${state.logs.length}:${state.logs[0]?.id || ''}:${state.logs.filter((x) => x.deleteRequestedBy).map((x) => `${x.id}_${x.deleteRequestedBy}`).join(',')}` : '';
 
   useEffect(() => {
     if (!itemId || !spaceId) return;
@@ -476,12 +478,28 @@ function ItemDetailModal({ target, onClose }: { target: { kind: 'task' | 'counte
   if (!target || !state) return null;
   const { item } = target;
 
-  const undo = async (log: LogEntry) => {
-    if (!(await tgConfirm(t('td.undoConfirm')))) return;
-    const s = await run(() => api.del<SpaceState>(`/spaces/${state.space.id}/logs/${log.id}`));
-    if (s) {
-      applyState(s);
+  const handleDeleteAction = async (log: LogEntry, cancel = false) => {
+    if (!cancel && !log.deleteRequestedBy) {
+      if (!(await tgConfirm(t('td.undoConfirm')))) return;
+    } else if (!cancel && log.deleteRequestedBy && log.deleteRequestedBy !== state.actingRole) {
+      if (!(await tgConfirm(t('td.confirmDeletePrompt')))) return;
+    }
+    const r = await run(() =>
+      api.del<SpaceState & { deleteStatus?: 'requested' | 'cancelled' | 'deleted' }>(
+        `/spaces/${state.space.id}/logs/${log.id}${cancel ? '?cancel=1' : ''}`,
+      ),
+    );
+    if (!r) return;
+    applyState(r);
+    if (r.deleteStatus === 'deleted') {
       setLogs((ls) => ls?.filter((l) => l.id !== log.id) ?? null);
+      toast(t('td.deletedToast'), 'ok');
+    } else if (r.deleteStatus === 'cancelled') {
+      setLogs((ls) => ls?.map((l) => (l.id === log.id ? { ...l, deleteRequestedBy: null } : l)) ?? null);
+      toast(t('td.deleteCancelledToast'), 'info');
+    } else {
+      setLogs((ls) => ls?.map((l) => (l.id === log.id ? { ...l, deleteRequestedBy: state.actingRole } : l)) ?? null);
+      toast(t('td.deleteRequestedToast'), 'info');
     }
   };
 
@@ -525,13 +543,58 @@ function ItemDetailModal({ target, onClose }: { target: { kind: 'task' | 'counte
                   </div>
                 </div>
                 <span className="text-sm font-bold text-amber-300">+{l.xp}</span>
-                <button onClick={() => undo(l)} className="rounded-lg px-2 py-1 text-xs text-slate-500 active:bg-white/5">
-                  ↶
-                </button>
+                {!l.deleteRequestedBy && (
+                  <button
+                    onClick={() => handleDeleteAction(l, false)}
+                    className="rounded-lg px-2 py-1 text-xs text-slate-400 active:bg-white/5"
+                    title={t('td.undo')}
+                  >
+                    🗑️
+                  </button>
+                )}
               </div>
               {l.photos.length > 0 && (
                 <div className="mt-2">
                   <PhotoThumbs photos={l.photos} size={72} onOpen={(i) => setLightbox({ photos: l.photos, i })} />
+                </div>
+              )}
+              {l.deleteRequestedBy && (
+                <div
+                  className={`mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border px-2.5 py-1.5 text-xs ${
+                    l.deleteRequestedBy === state.actingRole
+                      ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
+                      : 'border-rose-400/30 bg-rose-500/15 text-rose-100'
+                  }`}
+                >
+                  {l.deleteRequestedBy === state.actingRole ? (
+                    <>
+                      <span>⏳ {t('td.waitPartner', { name: nameOf(state.actingRole === 'p1' ? 'p2' : 'p1') })}</span>
+                      <button
+                        onClick={() => handleDeleteAction(l, true)}
+                        className="rounded-lg bg-white/10 px-2 py-0.5 font-semibold text-white"
+                      >
+                        ✕ {t('td.cancelDeleteBtn')}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-semibold">⚠️ {t('td.partnerWantsDelete', { name: nameOf(l.deleteRequestedBy) })}</span>
+                      <span className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleDeleteAction(l, true)}
+                          className="rounded-lg bg-white/10 px-2 py-0.5 font-semibold text-slate-200"
+                        >
+                          ✕
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAction(l, false)}
+                          className="rounded-lg bg-rose-500 px-2 py-0.5 font-bold text-white"
+                        >
+                          ✓ {t('td.confirmDeleteBtn')}
+                        </button>
+                      </span>
+                    </>
+                  )}
                 </div>
               )}
             </div>

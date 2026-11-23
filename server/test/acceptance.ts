@@ -159,6 +159,27 @@ try {
   const imgFetch = await fetch(base + url1);
   assert.equal(imgFetch.status, 200);
 
+  // 6. Dual-partner log deletion approval: Vika requests deletion → not deleted until Dima confirms
+  const logId = dimaStateAfter.data.logs[0].id;
+  const vikaDelReq = await req('DELETE', `/api/spaces/${domId}/logs/${logId}`, vikaToken);
+  assert.equal(vikaDelReq.status, 200);
+  assert.equal(vikaDelReq.data.deleteStatus, 'requested');
+  assert.equal(vikaDelReq.data.logs.length, 1);
+  assert.equal(vikaDelReq.data.logs[0].deleteRequestedBy, 'p2');
+
+  // Dima confirms deletion → log is now deleted
+  const dimaDelConfirm = await req('DELETE', `/api/spaces/${domId}/logs/${logId}`, dimaToken);
+  assert.equal(dimaDelConfirm.status, 200);
+  assert.equal(dimaDelConfirm.data.deleteStatus, 'deleted');
+  assert.equal(dimaDelConfirm.data.logs.length, 0);
+  assert.equal(dimaDelConfirm.data.xp.p2, 0);
+
+  // 7. Counters master toggle (showCounters)
+  const toggleCountersOff = await req('PATCH', `/api/spaces/${domId}`, dimaToken, { showCounters: false });
+  assert.equal(toggleCountersOff.data.space.showCounters, false);
+  const toggleCountersOn = await req('PATCH', `/api/spaces/${domId}`, dimaToken, { showCounters: true });
+  assert.equal(toggleCountersOn.data.space.showCounters, true);
+
   console.log('ALL ACCEPTANCE TESTS PASSED');
 } finally {
   server.close();

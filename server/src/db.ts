@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS spaces (
   p2_avatar TEXT NOT NULL DEFAULT '🐰',
   mode TEXT NOT NULL DEFAULT 'symmetric',
   show_balancer INTEGER NOT NULL DEFAULT 1,
+  show_counters INTEGER NOT NULL DEFAULT 1,
   cycle_period TEXT NOT NULL DEFAULT 'weekly',
   cycle_days INTEGER NOT NULL DEFAULT 7,
   cycle_started_at INTEGER NOT NULL,
@@ -103,6 +104,7 @@ CREATE TABLE IF NOT EXISTS logs (
   amount INTEGER NOT NULL DEFAULT 0,
   photos TEXT NOT NULL DEFAULT '[]',
   out_of_turn INTEGER NOT NULL DEFAULT 0,
+  delete_requested_by TEXT,
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_logs_space_time ON logs(space_id, created_at);
@@ -160,11 +162,24 @@ async function getSqlJs() {
 }
 
 async function openAdapter(): Promise<DbAdapter> {
+  const migrate = (execFn: (sql: string) => void) => {
+    for (const sql of [
+      `ALTER TABLE spaces ADD COLUMN show_counters INTEGER NOT NULL DEFAULT 1`,
+      `ALTER TABLE logs ADD COLUMN delete_requested_by TEXT`,
+    ]) {
+      try {
+        execFn(sql);
+      } catch {
+        /* column already exists */
+      }
+    }
+  };
   const Native = await getNativeSqlite();
   if (Native) {
     const ndb = new Native(DB_PATH);
     ndb.exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;');
     ndb.exec(SCHEMA_SQL);
+    migrate((s) => ndb.exec(s));
     return {
       exec: (sql) => ndb.exec(sql),
       get: (sql, ...p) => ndb.prepare(sql).get(...p) as Row | undefined,
@@ -197,6 +212,7 @@ async function openAdapter(): Promise<DbAdapter> {
   const initial = fs.existsSync(DB_PATH) ? await fs.promises.readFile(DB_PATH) : undefined;
   const sdb = new SQL.Database(initial && initial.length > 0 ? new Uint8Array(initial) : undefined);
   sdb.run(SCHEMA_SQL);
+  migrate((s) => sdb.run(s));
 
   const bindParams = (p: any[]) => p.map((x) => (x === undefined ? null : x));
 

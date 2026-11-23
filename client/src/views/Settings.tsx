@@ -330,40 +330,65 @@ export function Settings() {
       {/* 5. Counters manager */}
       <SectionTitle
         right={
-          <Button size="sm" onClick={() => setCounterModal({})}>
-            + {t('st.addCounter')}
-          </Button>
+          <div className="flex items-center gap-2">
+            {state.space.showCounters !== false && (
+              <Button size="sm" onClick={() => setCounterModal({})}>
+                + {t('st.addCounter')}
+              </Button>
+            )}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={state.space.showCounters !== false}
+              onClick={() => {
+                haptic('select');
+                patchSpace({ showCounters: state.space.showCounters === false });
+              }}
+              className={`relative h-7 w-12 shrink-0 rounded-full transition ${
+                state.space.showCounters !== false ? 'bg-violet-500' : 'bg-slate-700'
+              }`}
+              title={t('st.showCounters')}
+            >
+              <span
+                className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${
+                  state.space.showCounters !== false ? 'left-[22px]' : 'left-0.5'
+                }`}
+              />
+            </button>
+          </div>
         }
       >
         🔢 {t('st.counters')}
       </SectionTitle>
-      <Card className="divide-y divide-white/5 !p-2">
-        {state.counters.map((c) => (
-          <div key={c.id} className="flex items-center gap-2.5 p-2">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-800 text-xl">{c.emoji}</span>
-            <button onClick={() => setCounterModal({ counter: c })} className="min-w-0 flex-1 text-left">
-              <div className={`truncate text-sm font-semibold ${c.active ? 'text-white' : 'text-slate-500 line-through'}`}>{c.title}</div>
-              <div className="text-xs text-slate-400">
-                +{c.step} · +{c.xp} XP {c.photoMode !== 'none' ? `· 📷(${c.photoMode})` : ''} {!c.showOnDashboard ? '· 🙈' : ''}
-              </div>
-            </button>
-            <button
-              onClick={() =>
-                run(() => api.patch<SpaceState>(`/spaces/${sid}/counters/${c.id}`, { showOnDashboard: !c.showOnDashboard })).then(
-                  (s) => s && applyState(s),
-                )
-              }
-              className={`rounded-xl px-2 py-1 text-xs ${c.showOnDashboard ? 'bg-violet-500/15 text-violet-300' : 'bg-slate-800 text-slate-500'}`}
-              title={t('ie.showOnDashboard')}
-            >
-              🏠
-            </button>
-            <button onClick={() => setCounterModal({ counter: c })} className="rounded-xl bg-white/5 px-2.5 py-1 text-xs text-slate-300">
-              ✎
-            </button>
-          </div>
-        ))}
-      </Card>
+      {state.space.showCounters !== false && (
+        <Card className="divide-y divide-white/5 !p-2">
+          {state.counters.map((c) => (
+            <div key={c.id} className="flex items-center gap-2.5 p-2">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-800 text-xl">{c.emoji}</span>
+              <button onClick={() => setCounterModal({ counter: c })} className="min-w-0 flex-1 text-left">
+                <div className={`truncate text-sm font-semibold ${c.active ? 'text-white' : 'text-slate-500 line-through'}`}>{c.title}</div>
+                <div className="text-xs text-slate-400">
+                  +{c.step} · +{c.xp} XP {c.photoMode !== 'none' ? `· 📷(${c.photoMode})` : ''} {!c.showOnDashboard ? '· 🙈' : ''}
+                </div>
+              </button>
+              <button
+                onClick={() =>
+                  run(() => api.patch<SpaceState>(`/spaces/${sid}/counters/${c.id}`, { showOnDashboard: !c.showOnDashboard })).then(
+                    (s) => s && applyState(s),
+                  )
+                }
+                className={`rounded-xl px-2 py-1 text-xs ${c.showOnDashboard ? 'bg-violet-500/15 text-violet-300' : 'bg-slate-800 text-slate-500'}`}
+                title={t('ie.showOnDashboard')}
+              >
+                🏠
+              </button>
+              <button onClick={() => setCounterModal({ counter: c })} className="rounded-xl bg-white/5 px-2.5 py-1 text-xs text-slate-300">
+                ✎
+              </button>
+            </div>
+          ))}
+        </Card>
+      )}
 
       {/* 6. Roulette manager */}
       <SectionTitle>🎡 {t('st.roulette')}</SectionTitle>

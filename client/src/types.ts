@@ -35,6 +35,7 @@ export interface Space {
   inviteCode: string;
   mode: 'symmetric' | 'balancer';
   showBalancer: boolean;
+  showCounters: boolean;
   cyclePeriod: 'weekly' | 'monthly' | 'custom' | 'off';
   cycleDays: number;
   rewardType: 'roulette' | 'text';
@@ -83,6 +84,7 @@ export interface LogEntry {
   amount: number;
   photos: string[];
   outOfTurn: boolean;
+  deleteRequestedBy: Role | null;
   createdAt: number;
 }
 
