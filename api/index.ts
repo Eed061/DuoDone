@@ -1,11 +1,4 @@
-import os from 'node:os';
-import path from 'node:path';
 import express from 'express';
-
-if (!process.env.DATA_DIR) {
-  process.env.DATA_DIR = path.join(os.tmpdir(), 'duodone-data');
-}
-
 import { apiRouter } from '../server/src/routes.js';
 import { UPLOAD_DIR, ensureLocalUpload } from '../server/src/storage.js';
 import { ensureDbReady, flushDbSyncNow, refreshDbFromCloudIfNeeded } from '../server/src/db.js';
@@ -45,7 +38,7 @@ app.use(
     publicConfig: {
       botUsername: BOT_USERNAME,
       appShortName: process.env.TG_APP_SHORT_NAME || '',
-      publicUrl: (process.env.PUBLIC_URL || 'https://duodone-one.vercel.app').replace(/\/+$/, ''),
+      publicUrl: (process.env.PUBLIC_URL || 'https://duo-done.vercel.app').replace(/\/+$/, ''),
       telegramAuth: !!BOT_TOKEN || ALLOW_INSECURE_TG,
     },
   }),
@@ -60,6 +53,10 @@ app.get(/^\/uploads\/(.+)$/, async (req, res) => {
   res.sendFile(full);
 });
 
-export default function handler(req: any, res: any) {
-  return app(req, res);
+export default async function handler(req: any, res: any) {
+  try {
+    return app(req, res);
+  } catch (err: any) {
+    res.status(500).json({ error: 'handler_crash', message: String(err?.message || err) });
+  }
 }

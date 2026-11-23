@@ -1,9 +1,11 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { cloudSyncEnabled, fbGetRemoteUpdatedAt, ghPutFile, localDbUpdatedAt, restoreDbIfNeeded } from './cloudSync.js';
 
-export const DATA_DIR = path.resolve(process.env.DATA_DIR || 'data');
+const defaultDir = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME ? path.join(os.tmpdir(), 'duodone-data') : 'data';
+export const DATA_DIR = path.resolve(process.env.DATA_DIR || defaultDir);
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const DB_PATH = path.join(DATA_DIR, 'duodone.db');
