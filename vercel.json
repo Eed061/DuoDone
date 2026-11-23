@@ -1,0 +1,9 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "client/dist",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/uploads/(.*)", "destination": "/api/index" },
+    { "source": "/((?!api/|uploads/|assets/|icon\\.svg|manifest\\.webmanifest).*)", "destination": "/index.html" }
+  ]
+}

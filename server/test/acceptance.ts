@@ -8,6 +8,7 @@ import express from 'express';
 // Isolated test DB
 const TEST_DATA = path.resolve('data-test-' + process.pid);
 process.env.DATA_DIR = TEST_DATA;
+process.env.DISABLE_FIREBASE_SYNC = '1';
 const BOT_TOKEN = '123456:TEST_BOT_TOKEN_SECRET';
 
 const { apiRouter } = await import('../src/routes.js');

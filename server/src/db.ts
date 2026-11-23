@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { cloudSyncEnabled, ghPutFile, restoreDbIfNeeded } from './cloudSync.js';
+import { cloudSyncEnabled, fbGetRemoteUpdatedAt, ghPutFile, localDbUpdatedAt, restoreDbIfNeeded } from './cloudSync.js';
 
 export const DATA_DIR = path.resolve(process.env.DATA_DIR || 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -10,9 +10,7 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 const DB_PATH = path.join(DATA_DIR, 'duodone.db');
 await restoreDbIfNeeded(DB_PATH);
 
-export const db = new DatabaseSync(DB_PATH);
-
-db.exec(`
+const SCHEMA_SQL = `
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
 PRAGMA busy_timeout = 5000;
@@ -130,7 +128,10 @@ CREATE TABLE IF NOT EXISTS cycles (
 );
 CREATE INDEX IF NOT EXISTS idx_spaces_p1 ON spaces(p1_user_id);
 CREATE INDEX IF NOT EXISTS idx_spaces_p2 ON spaces(p2_user_id);
-`);
+`;
+
+export let db = new DatabaseSync(DB_PATH);
+db.exec(SCHEMA_SQL);
 
 export const uid = (bytes = 12) => crypto.randomBytes(bytes).toString('base64url');
 
@@ -175,7 +176,34 @@ export function scheduleDbSync() {
   syncTimer = setTimeout(() => {
     syncTimer = null;
     flushDbSnapshot();
-  }, 1800);
+  }, 1200);
+}
+
+export async function flushDbSyncNow() {
+  if (!cloudSyncEnabled) return;
+  if (syncTimer) {
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    await flushDbSnapshot();
+  }
+}
+
+export async function refreshDbFromCloudIfNeeded() {
+  if (!cloudSyncEnabled || syncTimer || syncing) return;
+  const remoteTs = await fbGetRemoteUpdatedAt('db/duodone.db');
+  if (remoteTs > localDbUpdatedAt) {
+    try {
+      db.close();
+    } catch {}
+    for (const suffix of ['', '-wal', '-shm']) {
+      try {
+        fs.unlinkSync(DB_PATH + suffix);
+      } catch {}
+    }
+    await restoreDbIfNeeded(DB_PATH, true);
+    db = new DatabaseSync(DB_PATH);
+    db.exec(SCHEMA_SQL);
+  }
 }
 
 export function tx<T>(fn: () => T): T {

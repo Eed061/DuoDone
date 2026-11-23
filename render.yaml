@@ -9,11 +9,9 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 22.14.0
-      - key: GITHUB_STORAGE_REPO
-        value: Eed061/duodone-storage
-      - key: GITHUB_STORAGE_TOKEN
-        sync: false
+      - key: FIREBASE_DB_URL
+        value: https://duodone-f4f09-default-rtdb.europe-west1.firebasedatabase.app
       - key: BOT_TOKEN
-        sync: false
+        value: 8610123389:AAEB_fhurfxpSJZxQtceltu7ez4WhMMYjAo
       - key: BOT_USERNAME
-        sync: false
+        value: DuoDone_bot

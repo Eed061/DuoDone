@@ -71,7 +71,7 @@ const normalizeCode = (raw: unknown) => {
   let c = String(raw || '')
     .trim()
     .toUpperCase()
-    .replace(/^JOIN_/, '')
+    .replace(/^(JOIN_|ACCEPT_)/, '')
     .replace(/\s+/g, '');
   if (c && !c.startsWith('DUO-')) c = c.startsWith('DUO') ? 'DUO-' + c.slice(3) : 'DUO-' + c;
   return c;
@@ -281,6 +281,45 @@ export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean;
 
   r.get('/config', (_req, res) => res.json(config.publicConfig));
   r.get('/health', (_req, res) => res.json({ ok: true }));
+
+  // ---------- Telegram Bot Webhook (/api/bot) ----------
+  r.all(
+    '/bot',
+    h(async (req, res) => {
+      if (req.method !== 'POST' || !config.botToken) return res.status(200).send('DuoDone Bot Webhook Running');
+      const update = req.body;
+      const msg = update?.message;
+      const text = typeof msg?.text === 'string' ? msg.text : '';
+      if (msg?.chat?.id && (text.startsWith('/start') || text.startsWith('/help'))) {
+        const chatId = msg.chat.id;
+        const firstName = String(msg.from?.first_name || 'Друже')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+        const parts = text.split(' ');
+        const startParam = parts.length > 1 ? parts[1] : '';
+        const isInvite = /^(join_|accept_|DUO-)/i.test(startParam);
+        const pubUrl = (config.publicConfig as any)?.publicUrl || `${req.protocol}://${req.get('host')}`;
+        const appUrl = isInvite ? `${pubUrl}/?join=${encodeURIComponent(startParam.replace(/^(join_|accept_)/i, ''))}` : pubUrl;
+        const welcome = isInvite
+          ? `🤝 <b>Запрошення отримано!</b>\n\nВітаємо у спільному просторі DuoDone! 🎉\nТисни кнопку нижче, щоб приєднатися до простору партнера 🚀`
+          : `🏓 Привіт, ${firstName}! Вітаємо у DuoDone — офіційній зоні побутового миру та справедливості! 🤝\n\n• 🏓 <b>Симетричний Пінг-понг</b>: помив посуд ➔ тапнув ➔ хід перелетів до партнера.\n• ⚖️ <b>XP Балансир</b>: заробляй бали за справи та перетягуй канат на свій бік.\n• 🎡 <b>Рулетка Долі</b>: розіграш призів та завдань наприкінці циклу.\n\nТисни кнопку нижче! 🚀`;
+        await fetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: welcome,
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [[{ text: isInvite ? '✅ Приєднатися до простору 🚀' : '🏓 Відкрити DuoDone 🚀', web_app: { url: appUrl } }]],
+            },
+          }),
+        }).catch(() => {});
+      }
+      res.status(200).json({ ok: true });
+    }),
+  );
 
   // ---------- auth ----------
   r.post(

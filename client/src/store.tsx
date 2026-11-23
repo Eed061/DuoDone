@@ -248,9 +248,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setActiveId(initial);
         setBooted(true);
 
-        const joinRaw = readJoinParam() || (startParam && /^join_/i.test(startParam) ? startParam : null);
+        const joinRaw = readJoinParam() || (startParam && /^(join_|accept_|DUO-)/i.test(startParam) ? startParam : null);
         if (joinRaw) {
-          const code = joinRaw.replace(/^join_/i, '');
+          const code = joinRaw.replace(/^(join_|accept_)/i, '');
           try {
             const j = await api.post<{ spaceId: string; already: boolean; spaces: SpaceSummary[] }>('/spaces/join', { code });
             if (cancelled) return;
@@ -356,10 +356,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('pageshow', onVisible);
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
-    // fallback polling when the socket is down (some corporate proxies block WS)
+    // fallback polling when the socket is down (e.g. serverless or corporate proxies)
     const poll = setInterval(() => {
       if (document.visibilityState === 'visible' && (!ws || ws.readyState !== 1)) refreshState();
-    }, 15000);
+    }, 4500);
 
     return () => {
       closed = true;
