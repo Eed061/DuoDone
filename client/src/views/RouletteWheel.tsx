@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../store';
 import { boom } from '../lib/utils';
 import { haptic } from '../lib/tg';
@@ -26,6 +26,13 @@ export function RouletteWheel() {
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
+  const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
+    };
+  }, []);
 
   if (!state) return null;
 
@@ -53,7 +60,9 @@ export function RouletteWheel() {
     const delta = 360 * (6 + Math.floor(Math.random() * 3)) + ((targetMod - currentMod + 360) % 360);
     setRotation((r) => r + delta);
 
-    setTimeout(() => {
+    if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
+    spinTimerRef.current = setTimeout(() => {
+      spinTimerRef.current = null;
       setSpinning(false);
       setWinner(items[idx]?.text ?? null);
       haptic('success');

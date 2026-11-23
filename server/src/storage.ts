@@ -64,7 +64,10 @@ export async function saveImage(buf: Buffer, mime: string, spaceHint = 'misc'): 
   await fs.promises.writeFile(full, buf);
 
   if (cloudSyncEnabled) {
-    await ghPutFile(`uploads/${key}`, buf, `upload ${key}`);
+    const ok = await ghPutFile(`uploads/${key}`, buf, `upload ${key}`);
+    if (!ok && process.env.VERCEL) {
+      throw new Error('cloud_upload_failed');
+    }
   }
   return `/uploads/${key}`;
 }

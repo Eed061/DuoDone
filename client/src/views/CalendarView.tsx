@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../store';
 import { api } from '../lib/api';
 import { fmtDate, fmtMonth, fmtTime, weekdayNames } from '../lib/utils';
@@ -25,17 +25,21 @@ export function CalendarView() {
 
   const spaceId = state?.space.id;
   const logsHead = state?.logs[0]?.id;
+  const prevViewKey = useRef('');
 
   useEffect(() => {
     if (!spaceId) return;
+    const viewKey = `${spaceId}:${cursor.getFullYear()}-${cursor.getMonth()}`;
+    const isNewView = prevViewKey.current !== viewKey;
+    prevViewKey.current = viewKey;
     const from = new Date(cursor.getFullYear(), cursor.getMonth(), 1).getTime();
     const to = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
     let cancelled = false;
-    setLogs(null);
+    if (isNewView) setLogs(null);
     api
       .get<{ logs: LogEntry[] }>(`/spaces/${spaceId}/logs?from=${from}&to=${to}`)
       .then((r) => !cancelled && setLogs(r.logs))
-      .catch(() => !cancelled && setLogs([]));
+      .catch(() => !cancelled && isNewView && setLogs([]));
     return () => {
       cancelled = true;
     };

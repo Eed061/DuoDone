@@ -1,16 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../store';
 import { catBus } from '../lib/utils';
 
 export function CatCounselor() {
   const { state, pick } = useApp();
   const [bubble, setBubble] = useState<string | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const enabled = !!state?.space.catEnabled;
   const catName = state?.space.catName || 'Мурчик';
 
   useEffect(() => {
-    if (!enabled || !state) {
+    if (!enabled || !stateRef.current) {
       setBubble(null);
       return;
     }
@@ -27,10 +29,12 @@ export function CatCounselor() {
     }, 3500);
 
     const periodic = setInterval(() => {
-      const { p1, p2 } = state.xp;
+      const cur = stateRef.current;
+      if (!cur) return;
+      const { p1, p2 } = cur.xp;
       if (p1 === p2 && p1 > 0) show(pick('cat.tie', { cat: catName }));
       else if (p1 !== p2) {
-        const leader = p1 > p2 ? state.space.p1.name : state.space.p2.name;
+        const leader = p1 > p2 ? cur.space.p1.name : cur.space.p2.name;
         show(pick('cat.leader', { name: leader, cat: catName }));
       } else {
         show(pick('cat.hello', { cat: catName }));

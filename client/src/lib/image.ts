@@ -48,12 +48,12 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Compresses; if the browser can't decode the format, falls back to the original file (if it isn't huge). */
+/** Compresses; if the browser can't decode the format, falls back to the original file (within Vercel's 4.5MB limit). */
 export async function prepareImage(file: File): Promise<Blob> {
   try {
     return await compressImage(file);
   } catch (e) {
-    if (file.size <= 8 * 1024 * 1024 && /^image\//.test(file.type)) return file;
+    if (file.size <= 4 * 1024 * 1024 && /^image\//.test(file.type)) return file;
     throw e;
   }
 }
