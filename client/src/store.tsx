@@ -41,6 +41,15 @@ interface Ctx {
 const AppContext = createContext<Ctx>(null as any);
 export const useApp = () => useContext(AppContext);
 
+const VALID_LANGS: Lang[] = ['uk', 'en', 'pl', 'de', 'es'];
+function detectLang(raw?: string | null): Lang {
+  const code = String(raw || '')
+    .trim()
+    .toLowerCase()
+    .slice(0, 2) as Lang;
+  return VALID_LANGS.includes(code) ? code : 'uk';
+}
+
 function readJoinParam(): string | null {
   try {
     const u = new URL(window.location.href);
@@ -69,7 +78,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const activeRef = useRef<string | null>(null);
   const reqSeq = useRef(0);
 
-  const lang: Lang = me?.lang === 'en' ? 'en' : 'uk';
+  const lang: Lang = detectLang(me?.lang || (typeof navigator !== 'undefined' ? navigator.language : 'uk'));
   const { t, pick, err } = useMemo(() => makeT(lang), [lang]);
 
   useEffect(() => {
@@ -247,14 +256,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             // server has no BOT_TOKEN configured → fall back to device session
             if (!getToken()) {
               const g = await api.post<{ token: string }>('/auth/guest', {
-                lang: navigator.language?.startsWith('en') ? 'en' : 'uk',
+                lang: detectLang(navigator.language),
               });
               setToken(g.token);
             }
           }
         }
         if (!getToken()) {
-          const g = await api.post<{ token: string }>('/auth/guest', { lang: navigator.language?.startsWith('en') ? 'en' : 'uk' });
+          const g = await api.post<{ token: string }>('/auth/guest', { lang: detectLang(navigator.language) });
           setToken(g.token);
         }
         let r: { user: User; spaces: SpaceSummary[] };

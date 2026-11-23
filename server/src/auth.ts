@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import type { Request, Response, NextFunction } from 'express';
 import { get, run, uid, Row } from './db.js';
+import { normalizeLang } from './seed.js';
 
 export interface TgUser {
   id: number;
@@ -68,7 +69,7 @@ export function createUser(fields: { tgId?: string; tgUsername?: string; firstNa
     fields.tgId ?? null,
     fields.tgUsername ?? null,
     fields.firstName ?? null,
-    fields.lang === 'en' ? 'en' : 'uk',
+    normalizeLang(fields.lang),
     newRecoveryKey(),
     Date.now(),
   );
@@ -88,7 +89,7 @@ export function upsertTelegramUser(tg: TgUser) {
     tgId,
     tgUsername: tg.username,
     firstName: firstName ?? undefined,
-    lang: tg.language_code === 'en' ? 'en' : 'uk',
+    lang: normalizeLang(tg.language_code),
   });
 }
 

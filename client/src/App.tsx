@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { AppProvider, useApp } from './store';
+import { api } from './lib/api';
+import type { Lang, SpaceSummary, User } from './types';
 import { Header, BottomNav } from './components/Header';
 import { CatCounselor } from './components/CatCounselor';
 import { Dashboard } from './views/Dashboard';
@@ -102,6 +104,30 @@ function Onboarding() {
   return (
     <div className="scroll-y pt-safe pb-safe px-safe flex-1">
       <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-5 py-8">
+        <div className="mb-5 flex justify-center gap-1.5">
+          {(
+            [
+              { v: 'uk', l: '🇺🇦 UA' },
+              { v: 'en', l: '🇬🇧 EN' },
+              { v: 'pl', l: '🇵🇱 PL' },
+              { v: 'de', l: '🇩🇪 DE' },
+              { v: 'es', l: '🇪🇸 ES' },
+            ] as { v: Lang; l: string }[]
+          ).map((o) => (
+            <button
+              key={o.v}
+              onClick={() =>
+                run(() => api.patch<{ user: User; spaces: SpaceSummary[] }>('/me', { lang: o.v })).then((r) => r && setMeAndSpaces(r))
+              }
+              className={`rounded-xl px-2.5 py-1.5 text-xs font-bold transition ${
+                lang === o.v ? 'bg-violet-500 text-white shadow' : 'bg-white/5 text-slate-400'
+              }`}
+            >
+              {o.l}
+            </button>
+          ))}
+        </div>
+
         <div className="mb-6 text-center">
           <div className="mx-auto mb-3 grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-3xl shadow-xl shadow-fuchsia-500/25">
             💞

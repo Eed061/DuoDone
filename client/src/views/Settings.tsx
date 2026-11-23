@@ -87,14 +87,28 @@ export function Settings() {
       {/* 1. Language & Cat */}
       <SectionTitle>🌐 {t('st.lang')}</SectionTitle>
       <Card>
-        <Segmented
-          value={lang}
-          onChange={setLang}
-          options={[
-            { value: 'uk', label: '🇺🇦 Українська' },
-            { value: 'en', label: '🇬🇧 English' },
-          ]}
-        />
+        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+          {(
+            [
+              { value: 'uk', label: '🇺🇦 Українська' },
+              { value: 'en', label: '🇬🇧 English' },
+              { value: 'pl', label: '🇵🇱 Polski' },
+              { value: 'de', label: '🇩🇪 Deutsch' },
+              { value: 'es', label: '🇪🇸 Español' },
+            ] as { value: Lang; label: string }[]
+          ).map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => setLang(o.value)}
+              className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                lang === o.value ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/25' : 'bg-slate-950/60 text-slate-300'
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
       </Card>
 
       <SectionTitle>🐱 {t('st.cat')}</SectionTitle>

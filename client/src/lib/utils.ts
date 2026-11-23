@@ -24,7 +24,14 @@ export function fmtDuration(ms: number, t: TT) {
   return `${m}${t('cycle.m')}`;
 }
 
-const locale = (lang: Lang) => (lang === 'en' ? 'en-GB' : 'uk-UA');
+const LOCALES: Record<Lang, string> = {
+  uk: 'uk-UA',
+  en: 'en-GB',
+  pl: 'pl-PL',
+  de: 'de-DE',
+  es: 'es-ES',
+};
+const locale = (lang: Lang) => LOCALES[lang] || 'uk-UA';
 export const fmtTime = (ts: number, lang: Lang) =>
   new Date(ts).toLocaleTimeString(locale(lang), { hour: '2-digit', minute: '2-digit' });
 export const fmtDate = (ts: number, lang: Lang, opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }) =>

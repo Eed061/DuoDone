@@ -12,7 +12,7 @@ import {
 } from './auth.js';
 import { isOwnUrl, saveImage } from './storage.js';
 import { notifySpace, notifyUsers } from './realtime.js';
-import { DEFAULT_NAMES, isTemplateName, seedSpace } from './seed.js';
+import { DEFAULT_NAMES, isTemplateName, normalizeLang, seedSpace } from './seed.js';
 
 type Role = 'p1' | 'p2';
 const other = (r: Role): Role => (r === 'p1' ? 'p2' : 'p1');
@@ -244,7 +244,7 @@ function buildState(spaceId: string, userId: string) {
 }
 
 function createSpace(user: Row, name: string) {
-  const lang = (user.lang === 'en' ? 'en' : 'uk') as 'uk' | 'en';
+  const lang = normalizeLang(user.lang);
   const id = uid();
   const now = Date.now();
   const p1Name = user.first_name?.trim() || DEFAULT_NAMES[lang].p1;
@@ -376,7 +376,7 @@ export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean;
   r.post(
     '/auth/guest',
     h((req, res) => {
-      const user = createUser({ lang: req.body?.lang === 'en' ? 'en' : 'uk' });
+      const user = createUser({ lang: normalizeLang(req.body?.lang) });
       res.json({ token: createSession(user.id) });
     }),
   );
@@ -408,7 +408,7 @@ export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean;
     '/me',
     h((req, res) => {
       const u = req.user!;
-      if (has(req.body, 'lang')) run(`UPDATE users SET lang = ? WHERE id = ?`, req.body.lang === 'en' ? 'en' : 'uk', u.id);
+      if (has(req.body, 'lang')) run(`UPDATE users SET lang = ? WHERE id = ?`, normalizeLang(req.body.lang), u.id);
       if (has(req.body, 'quickstartDismissed'))
         run(`UPDATE users SET quickstart_dismissed = ? WHERE id = ?`, bool(req.body.quickstartDismissed), u.id);
       const nu = get(`SELECT * FROM users WHERE id = ?`, u.id)!;
@@ -456,8 +456,8 @@ export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean;
   r.post(
     '/spaces',
     h((req, res) => {
-      const lang = req.user!.lang === 'en' ? 'en' : 'uk';
-      const name = str(req.body?.name, 60, lang === 'en' ? 'Our cozy home' : 'Наш затишний дім');
+      const lang = normalizeLang(req.user!.lang);
+      const name = str(req.body?.name, 60, DEFAULT_NAMES[lang].home);
       const id = createSpace(req.user!, name);
       res.json({ spaceId: id, spaces: spaceList(req.user!.id) });
     }),

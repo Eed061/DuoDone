@@ -1,5 +1,5 @@
 export type Role = 'p1' | 'p2';
-export type Lang = 'uk' | 'en';
+export type Lang = 'uk' | 'en' | 'pl' | 'de' | 'es';
 export type PhotoMode = 'none' | 'optional' | 'required';
 
 export interface User {
