@@ -5,7 +5,7 @@
   "type": "module",
   "description": "DuoDone — gamified shared chores & habits tracker for two partners (Telegram Mini App + mobile web)",
   "engines": {
-    "node": ">=22.13"
+    "node": ">=18.0.0"
   },
   "scripts": {
     "dev": "concurrently -k -n server,client -c cyan,magenta \"npm:dev:server\" \"npm:dev:client\"",
@@ -25,6 +25,7 @@
     "multer": "^2.1.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "sql.js": "^1.17.0",
     "tailwindcss": "^4.2.3",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",

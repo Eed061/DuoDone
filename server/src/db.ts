@@ -1,4 +1,3 @@
-import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -8,12 +7,9 @@ export const DATA_DIR = path.resolve(process.env.DATA_DIR || 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const DB_PATH = path.join(DATA_DIR, 'duodone.db');
-await restoreDbIfNeeded(DB_PATH);
 
 const SCHEMA_SQL = `
-PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
-PRAGMA busy_timeout = 5000;
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
@@ -130,8 +126,131 @@ CREATE INDEX IF NOT EXISTS idx_spaces_p1 ON spaces(p1_user_id);
 CREATE INDEX IF NOT EXISTS idx_spaces_p2 ON spaces(p2_user_id);
 `;
 
-export let db = new DatabaseSync(DB_PATH);
-db.exec(SCHEMA_SQL);
+export type Row = Record<string, any>;
+
+interface DbAdapter {
+  exec(sql: string): void;
+  get(sql: string, ...p: any[]): Row | undefined;
+  all(sql: string, ...p: any[]): Row[];
+  run(sql: string, ...p: any[]): void;
+  exportBytes(): Promise<Buffer>;
+  close(): void;
+}
+
+let NativeDatabaseSync: any = undefined;
+async function getNativeSqlite() {
+  if (NativeDatabaseSync !== undefined) return NativeDatabaseSync;
+  try {
+    const mod = await import('node:sqlite');
+    NativeDatabaseSync = mod.DatabaseSync;
+  } catch {
+    NativeDatabaseSync = null;
+  }
+  return NativeDatabaseSync;
+}
+
+let SQLJs: any = null;
+async function getSqlJs() {
+  if (SQLJs) return SQLJs;
+  const initSqlJs = (await import('sql.js')).default;
+  SQLJs = await initSqlJs();
+  return SQLJs;
+}
+
+async function openAdapter(): Promise<DbAdapter> {
+  const Native = await getNativeSqlite();
+  if (Native) {
+    const ndb = new Native(DB_PATH);
+    ndb.exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;');
+    ndb.exec(SCHEMA_SQL);
+    return {
+      exec: (sql) => ndb.exec(sql),
+      get: (sql, ...p) => ndb.prepare(sql).get(...p) as Row | undefined,
+      all: (sql, ...p) => ndb.prepare(sql).all(...p) as Row[],
+      run: (sql, ...p) => {
+        ndb.prepare(sql).run(...p);
+      },
+      exportBytes: async () => {
+        const snapPath = path.join(DATA_DIR, `snap-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
+        try {
+          const escaped = snapPath.replace(/'/g, "''");
+          ndb.exec(`VACUUM INTO '${escaped}'`);
+          return await fs.promises.readFile(snapPath);
+        } finally {
+          try {
+            await fs.promises.unlink(snapPath);
+          } catch {}
+        }
+      },
+      close: () => {
+        try {
+          ndb.close();
+        } catch {}
+      },
+    };
+  }
+
+  // Fallback: sql.js (pure WASM SQLite — works on Node 18/20/22 on Vercel Serverless)
+  const SQL = await getSqlJs();
+  const initial = fs.existsSync(DB_PATH) ? await fs.promises.readFile(DB_PATH) : undefined;
+  const sdb = new SQL.Database(initial && initial.length > 0 ? new Uint8Array(initial) : undefined);
+  sdb.run(SCHEMA_SQL);
+
+  const bindParams = (p: any[]) => p.map((x) => (x === undefined ? null : x));
+
+  return {
+    exec: (sql) => sdb.run(sql),
+    get: (sql, ...p) => {
+      const stmt = sdb.prepare(sql);
+      try {
+        stmt.bind(bindParams(p));
+        if (stmt.step()) return stmt.getAsObject() as Row;
+        return undefined;
+      } finally {
+        stmt.free();
+      }
+    },
+    all: (sql, ...p) => {
+      const stmt = sdb.prepare(sql);
+      const rows: Row[] = [];
+      try {
+        stmt.bind(bindParams(p));
+        while (stmt.step()) rows.push(stmt.getAsObject() as Row);
+        return rows;
+      } finally {
+        stmt.free();
+      }
+    },
+    run: (sql, ...p) => {
+      sdb.run(sql, bindParams(p));
+    },
+    exportBytes: async () => {
+      const bytes: Uint8Array = sdb.export();
+      const buf = Buffer.from(bytes);
+      await fs.promises.writeFile(DB_PATH, buf).catch(() => {});
+      return buf;
+    },
+    close: () => {
+      try {
+        sdb.close();
+      } catch {}
+    },
+  };
+}
+
+let adapter: DbAdapter | null = null;
+let initPromise: Promise<void> | null = null;
+
+export async function ensureDbReady(): Promise<void> {
+  if (adapter) return;
+  if (!initPromise) {
+    initPromise = (async () => {
+      await restoreDbIfNeeded(DB_PATH);
+      adapter = await openAdapter();
+    })();
+  }
+  await initPromise;
+}
 
 export const uid = (bytes = 12) => crypto.randomBytes(bytes).toString('base64url');
 
@@ -141,27 +260,18 @@ let syncPending = false;
 let inTx = 0;
 
 async function flushDbSnapshot() {
-  if (!cloudSyncEnabled) return;
+  if (!cloudSyncEnabled || !adapter) return;
   if (syncing) {
     syncPending = true;
     return;
   }
   syncing = true;
-  const snapPath = path.join(DATA_DIR, `snap-${Date.now()}.db`);
   try {
-    try {
-      fs.unlinkSync(snapPath);
-    } catch {}
-    const escaped = snapPath.replace(/'/g, "''");
-    db.exec(`VACUUM INTO '${escaped}'`);
-    const buf = await fs.promises.readFile(snapPath);
+    const buf = await adapter.exportBytes();
     await ghPutFile('db/duodone.db', buf, 'sync db snapshot');
   } catch (e) {
     console.error('[cloudSync] snapshot failed:', e);
   } finally {
-    try {
-      await fs.promises.unlink(snapPath);
-    } catch {}
     syncing = false;
     if (syncPending) {
       syncPending = false;
@@ -184,37 +294,35 @@ export async function flushDbSyncNow() {
   if (syncTimer) {
     clearTimeout(syncTimer);
     syncTimer = null;
-    await flushDbSnapshot();
   }
+  await flushDbSnapshot();
 }
 
 export async function refreshDbFromCloudIfNeeded() {
+  await ensureDbReady();
   if (!cloudSyncEnabled || syncTimer || syncing) return;
   const remoteTs = await fbGetRemoteUpdatedAt('db/duodone.db');
   if (remoteTs > localDbUpdatedAt) {
-    try {
-      db.close();
-    } catch {}
+    adapter?.close();
     for (const suffix of ['', '-wal', '-shm']) {
       try {
         fs.unlinkSync(DB_PATH + suffix);
       } catch {}
     }
     await restoreDbIfNeeded(DB_PATH, true);
-    db = new DatabaseSync(DB_PATH);
-    db.exec(SCHEMA_SQL);
+    adapter = await openAdapter();
   }
 }
 
 export function tx<T>(fn: () => T): T {
-  db.exec('BEGIN IMMEDIATE');
+  adapter!.exec('BEGIN IMMEDIATE');
   inTx++;
   try {
     const r = fn();
-    db.exec('COMMIT');
+    adapter!.exec('COMMIT');
     return r;
   } catch (e) {
-    db.exec('ROLLBACK');
+    adapter!.exec('ROLLBACK');
     throw e;
   } finally {
     inTx--;
@@ -222,13 +330,11 @@ export function tx<T>(fn: () => T): T {
   }
 }
 
-export type Row = Record<string, any>;
-export const get = (sql: string, ...p: any[]) => db.prepare(sql).get(...p) as Row | undefined;
-export const all = (sql: string, ...p: any[]) => db.prepare(sql).all(...p) as Row[];
+export const get = (sql: string, ...p: any[]) => adapter!.get(sql, ...p);
+export const all = (sql: string, ...p: any[]) => adapter!.all(sql, ...p);
 export const run = (sql: string, ...p: any[]) => {
-  const res = db.prepare(sql).run(...p);
+  adapter!.run(sql, ...p);
   if (inTx === 0 && !/UPDATE\s+sessions\s+SET\s+last_seen/i.test(sql)) {
     scheduleDbSync();
   }
-  return res;
 };

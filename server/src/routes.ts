@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import crypto from 'node:crypto';
-import { all, get, run, tx, uid, Row } from './db.js';
+import { all, ensureDbReady, get, run, tx, uid, Row } from './db.js';
 import {
   createSession,
   createUser,
@@ -271,6 +271,9 @@ function createSpace(user: Row, name: string) {
 export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean; publicConfig: object }) {
   const r = express.Router();
   r.use(express.json({ limit: '200kb' }));
+  r.use((_req, _res, next) => {
+    ensureDbReady().then(() => next(), next);
+  });
   r.use((_req, res, next) => {
     // iOS Safari / Telegram WebView must never serve stale API state from cache
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');

@@ -2,14 +2,13 @@ import os from 'node:os';
 import path from 'node:path';
 import express from 'express';
 
-// On serverless (Vercel), /tmp is writable
-if (!process.env.DATA_DIR && process.env.VERCEL) {
+if (!process.env.DATA_DIR) {
   process.env.DATA_DIR = path.join(os.tmpdir(), 'duodone-data');
 }
 
-const { apiRouter } = await import('../server/src/routes.js');
-const { UPLOAD_DIR, ensureLocalUpload } = await import('../server/src/storage.js');
-const { flushDbSyncNow, refreshDbFromCloudIfNeeded } = await import('../server/src/db.js');
+import { apiRouter } from '../server/src/routes.js';
+import { UPLOAD_DIR, ensureLocalUpload } from '../server/src/storage.js';
+import { ensureDbReady, flushDbSyncNow, refreshDbFromCloudIfNeeded } from '../server/src/db.js';
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '8610123389:AAEB_fhurfxpSJZxQtceltu7ez4WhMMYjAo';
 const BOT_USERNAME = process.env.BOT_USERNAME || 'DuoDone_bot';
@@ -19,9 +18,13 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', true);
 
-// Sync DB from/to Firebase across serverless invocations
 app.use(async (req, res, next) => {
-  await refreshDbFromCloudIfNeeded().catch(() => {});
+  try {
+    await ensureDbReady();
+    await refreshDbFromCloudIfNeeded();
+  } catch (e) {
+    console.error('DB init error:', e);
+  }
   if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
     const origJson = res.json.bind(res);
     res.json = ((body: any) => {
@@ -57,4 +60,6 @@ app.get(/^\/uploads\/(.+)$/, async (req, res) => {
   res.sendFile(full);
 });
 
-export default app;
+export default function handler(req: any, res: any) {
+  return app(req, res);
+}
