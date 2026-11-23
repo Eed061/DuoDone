@@ -285,6 +285,31 @@ export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean;
   r.get('/config', (_req, res) => res.json(config.publicConfig));
   r.get('/health', (_req, res) => res.json({ ok: true }));
 
+  r.post(
+    '/setup-bot',
+    h(async (req, res) => {
+      if (!config.botToken) return res.status(400).json({ error: 'no_bot_token' });
+      const pubUrl = (config.publicConfig as any)?.publicUrl || `${req.protocol}://${req.get('host')}`;
+      const hookRes = await fetch(`https://api.telegram.org/bot${config.botToken}/setWebhook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: `${pubUrl}/api/bot` }),
+      }).then((x) => x.json());
+      const menuRes = await fetch(`https://api.telegram.org/bot${config.botToken}/setChatMenuButton`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          menu_button: {
+            type: 'web_app',
+            text: 'Відкрити DuoDone 🏓',
+            web_app: { url: pubUrl },
+          },
+        }),
+      }).then((x) => x.json());
+      res.json({ pubUrl, webhook: hookRes, menuButton: menuRes });
+    }),
+  );
+
   // ---------- Telegram Bot Webhook (/api/bot) ----------
   r.all(
     '/bot',
