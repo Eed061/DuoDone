@@ -12,6 +12,6 @@ services:
       - key: FIREBASE_DB_URL
         value: https://duodone-f4f09-default-rtdb.europe-west1.firebasedatabase.app
       - key: BOT_TOKEN
-        value: 8610123389:AAEB_fhurfxpSJZxQtceltu7ez4WhMMYjAo
+        sync: false
       - key: BOT_USERNAME
         value: DuoDone_bot
