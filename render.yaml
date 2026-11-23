@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: duodone-v2
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.14.0
+      - key: GITHUB_STORAGE_REPO
+        value: Eed061/duodone-storage
+      - key: GITHUB_STORAGE_TOKEN
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: BOT_USERNAME
+        sync: false

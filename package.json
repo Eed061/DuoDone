@@ -1,0 +1,44 @@
+{
+  "name": "duodone",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "DuoDone — gamified shared chores & habits tracker for two partners (Telegram Mini App + mobile web)",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n server,client -c cyan,magenta \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "tsx watch --clear-screen=false server/src/index.ts",
+    "dev:client": "vite",
+    "build": "vite build",
+    "start": "tsx server/src/index.ts",
+    "test": "tsx server/test/acceptance.ts",
+    "typecheck": "tsc --noEmit -p client/tsconfig.json && tsc --noEmit -p server/tsconfig.json"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1038.0",
+    "@tailwindcss/vite": "^4.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "canvas-confetti": "^1.9.4",
+    "express": "^5.2.1",
+    "multer": "^2.1.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "tailwindcss": "^4.2.3",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vite": "^8.3.8",
+    "ws": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.1.0",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/ws": "^8.18.1",
+    "concurrently": "^9.2.1"
+  }
+}
