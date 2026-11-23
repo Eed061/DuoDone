@@ -318,7 +318,22 @@ export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean;
           },
         }),
       }).then((x) => x.json());
-      res.json({ pubUrl, webhook: hookRes, menuButton: menuRes });
+      const descRes = await fetch(`https://api.telegram.org/bot${config.botToken}/setMyDescription`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description:
+            'DuoDone 🏓 — гейміфікований трекер спільних побутових справ і звичок для двох партнерів!\n\n• 🏓 Симетричний Пінг-понг задач\n• ⚖️ XP-Балансир\n• 🎡 Рулетка нагород та завдань\n• 📅 Календар і фото-підтвердження\n\nНатисни «Розпочати» або кнопку «Відкрити DuoDone», щоб увійти!',
+        }),
+      }).then((x) => x.json());
+      const shortDescRes = await fetch(`https://api.telegram.org/bot${config.botToken}/setMyShortDescription`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          short_description: 'DuoDone 🏓 — спільні справи для двох: пінг-понг задач, XP-балансир та рулетка нагород!',
+        }),
+      }).then((x) => x.json());
+      res.json({ pubUrl, webhook: hookRes, menuButton: menuRes, desc: descRes, shortDesc: shortDescRes });
     }),
   );
 
