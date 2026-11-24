@@ -180,6 +180,28 @@ try {
   const toggleCountersOn = await req('PATCH', `/api/spaces/${domId}`, dimaToken, { showCounters: true });
   assert.equal(toggleCountersOn.data.space.showCounters, true);
 
+  // 8. Roulette item editing & space factory-reset (keeps space + partners, resets logs & settings)
+  const rlItem = toggleCountersOn.data.roulette[0];
+  const rlEdited = await req('PATCH', `/api/spaces/${domId}/roulette/${rlItem.id}`, dimaToken, {
+    text: 'Романтична вечеря 🕯️',
+    pool: 'reward',
+  });
+  assert.equal(rlEdited.status, 200);
+  assert.equal(rlEdited.data.roulette.find((x: any) => x.id === rlItem.id).text, 'Романтична вечеря 🕯️');
+
+  await req('PATCH', `/api/spaces/${domId}`, dimaToken, { mode: 'balancer', showCounters: false });
+  const factoryReset = await req('POST', `/api/spaces/${domId}/factory-reset`, dimaToken);
+  assert.equal(factoryReset.status, 200);
+  assert.equal(factoryReset.data.space.name, 'Дім');
+  assert.equal(factoryReset.data.space.p1.name, 'Діма');
+  assert.equal(factoryReset.data.space.p2.name, 'Віка');
+  assert.equal(factoryReset.data.space.p1.linked, true);
+  assert.equal(factoryReset.data.space.p2.linked, true);
+  assert.equal(factoryReset.data.space.mode, 'symmetric');
+  assert.equal(factoryReset.data.space.showCounters, true);
+  assert.equal(factoryReset.data.logs.length, 0);
+  assert.ok(factoryReset.data.tasks.length >= 5);
+
   console.log('ALL ACCEPTANCE TESTS PASSED');
 } finally {
   server.close();

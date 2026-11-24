@@ -1019,11 +1019,59 @@ export function apiRouter(config: { botToken?: string; allowInsecureTg: boolean;
     }),
   );
 
+  r.patch(
+    '/spaces/:id/roulette/:itemId',
+    h((req, res) => {
+      const { space } = membership(String(req.params.id), req.user!.id);
+      const b = req.body || {};
+      const sets: string[] = [];
+      const vals: any[] = [];
+      if (has(b, 'text')) {
+        sets.push('text = ?');
+        vals.push(str(b.text, 80));
+      }
+      if (has(b, 'pool')) {
+        sets.push('pool = ?');
+        vals.push(b.pool === 'penalty' ? 'penalty' : 'reward');
+      }
+      if (sets.length) {
+        run(`UPDATE roulette SET ${sets.join(', ')} WHERE id = ? AND space_id = ?`, ...vals, String(req.params.itemId), space.id);
+      }
+      notifySpace(space.id);
+      res.json(buildState(space.id, req.user!.id));
+    }),
+  );
+
   r.delete(
     '/spaces/:id/roulette/:itemId',
     h((req, res) => {
       const { space } = membership(String(req.params.id), req.user!.id);
       run(`DELETE FROM roulette WHERE id = ? AND space_id = ?`, String(req.params.itemId), space.id);
+      notifySpace(space.id);
+      res.json(buildState(space.id, req.user!.id));
+    }),
+  );
+
+  r.post(
+    '/spaces/:id/factory-reset',
+    h((req, res) => {
+      const { space } = membership(String(req.params.id), req.user!.id);
+      const lang = normalizeLang(req.user!.lang);
+      const now = Date.now();
+      tx(() => {
+        run(`DELETE FROM logs WHERE space_id = ?`, space.id);
+        run(`DELETE FROM cycles WHERE space_id = ?`, space.id);
+        run(`DELETE FROM tasks WHERE space_id = ?`, space.id);
+        run(`DELETE FROM counters WHERE space_id = ?`, space.id);
+        run(`DELETE FROM roulette WHERE space_id = ?`, space.id);
+        run(
+          `UPDATE spaces SET mode = 'symmetric', show_balancer = 1, show_counters = 1, cycle_period = 'weekly', cycle_days = 7, cycle_started_at = ?, reward_type = 'roulette', reward_text = '', cat_enabled = 1, cat_name = ? WHERE id = ?`,
+          now,
+          DEFAULT_NAMES[lang].cat,
+          space.id,
+        );
+        seedSpace(space.id, lang);
+      });
       notifySpace(space.id);
       res.json(buildState(space.id, req.user!.id));
     }),
